@@ -51,6 +51,7 @@ Format JSON yang diharapkan:
   ],
   "product": "produk yang dibahas",
   "intent": "deskripsi niat pembelian",
+  "bestReply": "rekomendasi balasan terbaik dan paling efektif untuk saat ini (BAHASA INDONESIA)",
   "replies": {
     "hard": ["balasan gaya penjualan agresif opsi 1", "balasan gaya agresif opsi 2"],
     "soft": ["balasan gaya penjualan halus opsi 1", "balasan gaya halus opsi 2"],

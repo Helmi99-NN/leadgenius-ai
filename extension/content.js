@@ -1,16 +1,12 @@
 // ============================================
-// LeadGenius AI — Content Script v2.3
-// Dengan safety check chrome.runtime
+// LeadGenius AI — Content Script v2.4
+// Optimized for WhatsApp & Cross-Platform
 // ============================================
 
 (function() {
+  // Tunggu sampai body ada
+  if (!document.body) return;
   if (document.getElementById('leadgenius-fab')) return;
-
-  // Safety check: pastikan chrome.runtime tersedia
-  if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) {
-    console.warn('[LeadGenius] Extension context tidak tersedia. Refresh halaman ini.');
-    return;
-  }
 
   var url = window.location.href;
   var platformName = 'Chat';
@@ -35,13 +31,14 @@
 
   var fab = document.createElement('div');
   fab.id = 'leadgenius-fab';
+  fab.style.all = 'initial'; // Reset semua style agar tidak bentrok dengan CSS web aslinya
   fab.innerHTML = '<div id="lg-fab-btn" style="' +
-    'position:fixed;bottom:24px;left:24px;z-index:999999;' +
+    'position:fixed;bottom:24px;left:24px;z-index:2147483647;' + // Z-index maksimal
     'display:flex;align-items:center;gap:8px;padding:12px 20px;' +
     'background:' + platformColor + ';color:white;border-radius:100px;' +
-    'cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.3);' +
-    'font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:13px;font-weight:600;' +
-    'transition:all 0.2s;user-select:none;">' +
+    'cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.4);' +
+    'font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;font-size:13px;font-weight:600;' +
+    'transition:all 0.2s;user-select:none;border:1px solid rgba(255,255,255,0.2);">' +
     '<span style="font-size:16px;">📸</span>' +
     '<span id="lg-fab-label">Capture ' + platformName + '</span>' +
     '</div>';
@@ -51,68 +48,49 @@
   var btn = document.getElementById('lg-fab-btn');
   var label = document.getElementById('lg-fab-label');
 
-  btn.addEventListener('click', function() {
-    // Cek ulang apakah extension masih terkoneksi
-    if (!chrome.runtime || !chrome.runtime.sendMessage) {
-      label.textContent = '⚠️ Refresh halaman dulu (F5)';
-      btn.style.background = '#dc2626';
+  function updateStatus(text, color, resetAfter) {
+    label.textContent = text;
+    if (color) btn.style.background = color;
+    if (resetAfter) {
       setTimeout(function() {
-        btn.style.background = platformColor;
         label.textContent = 'Capture ' + platformName;
-      }, 4000);
+        btn.style.background = platformColor;
+      }, resetAfter);
+    }
+  }
+
+  btn.addEventListener('click', function() {
+    // Re-check connection
+    if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) {
+      updateStatus('⚠️ Refresh (F5)', '#dc2626', 4000);
       return;
     }
 
     btn.style.opacity = '0.6';
     btn.style.pointerEvents = 'none';
-    label.textContent = '⏳ Capturing & Analyzing...';
-
-    var timeout = setTimeout(function() {
-      btn.style.opacity = '1';
-      btn.style.pointerEvents = 'auto';
-      label.textContent = '⚠️ Timeout';
-      setTimeout(function() { label.textContent = 'Capture ' + platformName; }, 3000);
-    }, 10000);
+    updateStatus('⏳ Memproses...', null);
 
     try {
       chrome.runtime.sendMessage({ type: 'CAPTURE_AND_ANALYZE' }, function(response) {
-        clearTimeout(timeout);
         btn.style.opacity = '1';
         btn.style.pointerEvents = 'auto';
 
-        // Cek error koneksi extension
         if (chrome.runtime.lastError) {
-          label.textContent = '⚠️ Refresh halaman (F5)';
-          btn.style.background = '#dc2626';
-          setTimeout(function() {
-            btn.style.background = platformColor;
-            label.textContent = 'Capture ' + platformName;
-          }, 4000);
+          console.error(chrome.runtime.lastError);
+          updateStatus('⚠️ Koneksi Putus (F5)', '#dc2626', 4000);
           return;
         }
 
         if (response && response.success) {
-          btn.style.background = '#059669';
-          label.textContent = '✅ Terkirim ke Analyzer!';
-          setTimeout(function() {
-            btn.style.background = platformColor;
-            label.textContent = 'Capture ' + platformName;
-          }, 4000);
+          updateStatus('✅ Terkirim!', '#059669', 4000);
         } else {
-          label.textContent = '❌ ' + (response ? response.error : 'Gagal');
-          setTimeout(function() { label.textContent = 'Capture ' + platformName; }, 3000);
+          updateStatus('❌ ' + (response ? response.error : 'Gagal'), '#dc2626', 4000);
         }
       });
     } catch(err) {
-      clearTimeout(timeout);
       btn.style.opacity = '1';
       btn.style.pointerEvents = 'auto';
-      label.textContent = '⚠️ Refresh halaman (F5)';
-      btn.style.background = '#dc2626';
-      setTimeout(function() {
-        btn.style.background = platformColor;
-        label.textContent = 'Capture ' + platformName;
-      }, 4000);
+      updateStatus('⚠️ Error (F5)', '#dc2626', 4000);
     }
   });
 

@@ -4,6 +4,7 @@ import UploadZone from '../components/analyzer/UploadZone'
 import IntelligenceReading from '../components/analyzer/IntelligenceReading'
 import ContextExtraction from '../components/analyzer/ContextExtraction'
 import RecommendedReplies from '../components/analyzer/RecommendedReplies'
+import SmartSuggestion from '../components/analyzer/SmartSuggestion'
 import AnalyzerActionBar from '../components/analyzer/AnalyzerActionBar'
 import { analyzeChatScreenshot, fileToBase64 } from '../services/geminiService'
 import { supabase } from '../lib/supabase'
@@ -392,6 +393,10 @@ export default function AnalyzerPage() {
 
         {/* Kolom Kanan: Ringkasan & Balasan */}
         <div className="xl:col-span-8 space-y-gutter flex flex-col">
+          <SmartSuggestion
+            result={analysisResult}
+            isAnalyzing={isAnalyzing}
+          />
           <ContextExtraction
             result={analysisResult}
             isAnalyzing={isAnalyzing}

@@ -97,7 +97,7 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
         // Buka tab analyzer di BACKGROUND (GANTI KE VERCEL)
         var analyzerUrl = 'https://leadgenius-ai-puce.vercel.app/analyzer?from=extension&platform=' + platform.id + '&t=' + Date.now();
         
-        chrome.tabs.create({ url: analyzerUrl, active: false }, function(newTab) {
+        chrome.tabs.create({ url: analyzerUrl, active: true }, function(newTab) {
           // Tunggu tab selesai load, lalu inject data ke localStorage
           chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
             if (tabId === newTab.id && info.status === 'complete') {

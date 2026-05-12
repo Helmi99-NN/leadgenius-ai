@@ -76,7 +76,7 @@ function handleCapture() {
     if (response && response.success) {
       btn.classList.add('success');
       btnIcon.textContent = '✅';
-      btnText.textContent = 'Terkirim! Analisis otomatis berjalan...';
+      btnText.textContent = 'Berhasil! Membuka hasil analisis...';
       btn.disabled = false;
 
       loadStats();
