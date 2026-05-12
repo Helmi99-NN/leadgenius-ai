@@ -1,0 +1,6 @@
+/* LeadGenius AI — Content Styles v2.1 */
+/* Styles sudah inline di content.js */
+
+#lg-fab-btn:hover {
+  transform: scale(1.05) !important;
+}
