@@ -7,7 +7,7 @@ var PLATFORM_ICONS = {
   whatsapp: '💬', tiktok: '🎵', other: '🌐', unknown: '❓'
 };
 
-var WEBAPP = 'http://localhost:5173';
+var WEBAPP = 'https://leadgenius-ai-puce.vercel.app';
 var currentPlatform = null;
 
 document.addEventListener('DOMContentLoaded', function() {

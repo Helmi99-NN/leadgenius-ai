@@ -94,8 +94,8 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
           chrome.action.setBadgeBackgroundColor({ color: platform.color });
         });
 
-        // Buka tab analyzer di BACKGROUND (user tetap di tab saat ini)
-        var analyzerUrl = 'http://localhost:5173/analyzer?from=extension&platform=' + platform.id + '&t=' + Date.now();
+        // Buka tab analyzer di BACKGROUND (GANTI KE VERCEL)
+        var analyzerUrl = 'https://leadgenius-ai-puce.vercel.app/analyzer?from=extension&platform=' + platform.id + '&t=' + Date.now();
         
         chrome.tabs.create({ url: analyzerUrl, active: false }, function(newTab) {
           // Tunggu tab selesai load, lalu inject data ke localStorage
@@ -139,7 +139,7 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
   }
 
   if (message.type === 'OPEN_DASHBOARD') {
-    chrome.tabs.create({ url: 'http://localhost:5173/analyzer' });
+    chrome.tabs.create({ url: 'https://leadgenius-ai-puce.vercel.app/analyzer' });
   }
 
   return false;
