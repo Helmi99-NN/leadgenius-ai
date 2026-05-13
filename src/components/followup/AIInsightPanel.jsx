@@ -1,6 +1,68 @@
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { supabase } from '../../lib/supabase'
 
 export default function AIInsightPanel() {
+  const [stats, setStats] = useState({
+    overdue: 0,
+    completedWeek: 0,
+    totalWeek: 0,
+    conversion: 0,
+    loading: true
+  })
+
+  useEffect(() => {
+    async function fetchInsightData() {
+      try {
+        // 1. Get overdue follow ups (including those pending but past due)
+        const { data: followUps } = await supabase
+          .from('follow_ups')
+          .select('id, scheduled_at, status')
+          .in('status', ['pending', 'overdue'])
+
+        const now = new Date()
+        const overdueCount = (followUps || []).filter(fu => {
+          const scheduled = new Date(fu.scheduled_at)
+          const diffHours = (scheduled - now) / 3600000
+          return fu.status === 'overdue' || diffHours < -24
+        }).length
+        
+        // 2. Get completed this week
+        const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay())
+        
+        const { data: weekData } = await supabase
+          .from('follow_ups')
+          .select('id, status')
+          .gte('created_at', startOfWeek.toISOString())
+
+        const completedWeek = (weekData || []).filter(f => f.status === 'completed').length
+        const totalWeek = (weekData || []).length || 1 // avoid div by 0
+
+        // 3. Get conversion rate (hot leads / total leads)
+        const { data: leads } = await supabase.from('leads').select('category')
+        const hot = (leads || []).filter(l => l.category === 'hot').length
+        const totalLeads = (leads || []).length || 1
+        const conversion = ((hot / totalLeads) * 100).toFixed(1)
+
+        setStats({
+          overdue: (overdueData || []).length,
+          completedWeek,
+          totalWeek,
+          conversion,
+          loading: false
+        })
+      } catch (err) {
+        console.error('Failed to fetch AI insights:', err)
+        setStats(s => ({ ...s, loading: false }))
+      }
+    }
+    fetchInsightData()
+  }, [])
+
+  if (stats.loading) return null
+
+  const completionPercent = Math.min(100, Math.round((stats.completedWeek / stats.totalWeek) * 100)) || 0
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -26,15 +88,16 @@ export default function AIInsightPanel() {
         <div className="bg-surface-container-low rounded-lg p-stack-md border border-outline-variant">
           <p className="font-body-md text-body-md text-on-surface-variant mb-stack-sm">
             Anda memiliki{' '}
-            <strong className="text-error">3 Terlambat</strong> tindak lanjut
-            yang memerlukan perhatian segera. Mereka bernilai $4.200 dalam
-            potensi pipeline.
+            <strong className={stats.overdue > 0 ? "text-error" : "text-primary"}>
+              {stats.overdue} Terlambat
+            </strong> tindak lanjut
+            yang memerlukan perhatian segera.
           </p>
           <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
             <motion.div
-              className="bg-error h-full rounded-full"
+              className={`${stats.overdue > 0 ? 'bg-error' : 'bg-primary'} h-full rounded-full`}
               initial={{ width: 0 }}
-              animate={{ width: '25%' }}
+              animate={{ width: stats.overdue > 0 ? '25%' : '0%' }}
               transition={{ duration: 1, delay: 0.5, ease: 'easeOut' }}
             />
           </div>
@@ -46,15 +109,9 @@ export default function AIInsightPanel() {
             <span className="font-label-md text-label-md text-on-surface">
               Tingkat Konversi
             </span>
-            <span className="font-label-sm text-label-sm text-primary flex items-center">
-              <span className="material-symbols-outlined text-[14px]">
-                arrow_upward
-              </span>{' '}
-              2.4%
-            </span>
           </div>
           <div className="font-headline-lg text-headline-lg text-primary">
-            18.5%
+            {stats.conversion}%
           </div>
         </div>
 
@@ -77,16 +134,16 @@ export default function AIInsightPanel() {
             </span>
           </div>
           <div className="font-headline-lg text-headline-lg text-primary">
-            12{' '}
+            {stats.completedWeek}{' '}
             <span className="text-body-md text-on-surface-variant">
-              dari 18
+              dari {stats.totalWeek}
             </span>
           </div>
           <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden mt-stack-sm">
             <motion.div
               className="bg-primary h-full rounded-full"
               initial={{ width: 0 }}
-              animate={{ width: '67%' }}
+              animate={{ width: `${completionPercent}%` }}
               transition={{ duration: 1, delay: 0.7, ease: 'easeOut' }}
             />
           </div>
@@ -95,3 +152,4 @@ export default function AIInsightPanel() {
     </motion.div>
   )
 }
+

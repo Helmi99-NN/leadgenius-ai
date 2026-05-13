@@ -1,14 +1,35 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { updateFollowUpStatus } from '../../services/followUpService'
 
 export default function FollowUpCard({ item, index }) {
   const [sent, setSent] = useState(false)
+  const [isCompleted, setIsCompleted] = useState(false)
   const isEven = index % 2 === 0
 
-  const handleSend = () => {
-    setSent(true)
-    setTimeout(() => setSent(false), 2000)
+  const handleSend = async () => {
+    try {
+      setSent(true)
+      // Simulasikan pengiriman dan tandai selesai di DB
+      await updateFollowUpStatus(item.id, 'completed')
+      setTimeout(() => setIsCompleted(true), 1500)
+    } catch (err) {
+      console.error('Gagal mengirim:', err)
+      setSent(false)
+    }
   }
+
+  const handleComplete = async () => {
+    try {
+      await updateFollowUpStatus(item.id, 'completed')
+      setIsCompleted(true)
+    } catch (err) {
+      console.error('Gagal menandai selesai:', err)
+    }
+  }
+
+  if (isCompleted) return null // Sembunyikan jika sudah selesai
+
 
   return (
     <motion.div
@@ -118,12 +139,14 @@ export default function FollowUpCard({ item, index }) {
 
           {item.actions.includes('complete') && (
             <button
+              onClick={handleComplete}
               className="bg-surface hover:bg-surface-container border border-outline-variant text-on-surface font-label-md text-label-md px-stack-sm py-stack-sm rounded transition-colors"
               title="Selesai"
             >
               <span className="material-symbols-outlined text-[18px]">check</span>
             </button>
           )}
+
 
           {item.actions.includes('reschedule') && (
             <button

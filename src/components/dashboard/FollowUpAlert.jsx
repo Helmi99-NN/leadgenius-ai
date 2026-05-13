@@ -8,20 +8,29 @@ export default function FollowUpAlert() {
   useEffect(() => {
     async function fetchUrgent() {
       try {
-        // Hitung follow-up yang pending dan overdue
-        const { data } = await supabase
+        setLoading(true)
+        
+        // Ambil follow-up yang aktif
+        const { data: followUps } = await supabase
           .from('follow_ups')
-          .select('id, scheduled_at, status, leads(category)')
+          .select('id, scheduled_at, status')
           .in('status', ['pending', 'overdue'])
 
-        // Filter yang sudah lewat jadwal atau lead panas
-        const urgent = (data || []).filter((fu) => {
-          const isPastDue = new Date(fu.scheduled_at) <= new Date()
-          const isHotLead = fu.leads?.category === 'hot'
-          return isPastDue || isHotLead
+        const now = new Date()
+
+        // Filter follow-up yang mendesak: overdue atau hari ini
+        const urgentFUs = (followUps || []).filter((fu) => {
+          const scheduled = new Date(fu.scheduled_at)
+          const diffHours = (scheduled - now) / 3600000
+
+          const isOverdue = fu.status === 'overdue' || diffHours < -24
+          const isToday = diffHours >= -24 && diffHours <= 24
+
+          return isOverdue || isToday
         })
 
-        setUrgentCount(urgent.length)
+        setUrgentCount(urgentFUs.length)
+
       } catch (err) {
         console.error('Gagal memuat alert:', err)
       } finally {
@@ -30,6 +39,7 @@ export default function FollowUpAlert() {
     }
     fetchUrgent()
   }, [])
+
 
   // Tidak tampilkan jika tidak ada yang urgent
   if (loading || urgentCount === 0) return null
