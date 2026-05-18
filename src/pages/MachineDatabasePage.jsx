@@ -47,7 +47,7 @@ function MachineSelector({ machines, selectedMachine, onSelect, onAddNew, loadin
               value={query}
               onChange={e => { setQuery(e.target.value); setShowDropdown(true) }}
               onFocus={() => setShowDropdown(true)}
-              placeholder="Cari atau pilih mesin..."
+              placeholder="Cari atau pilih topik/mesin..."
               className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-outline-variant bg-white text-[14px] text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"
             />
           </div>
@@ -56,7 +56,7 @@ function MachineSelector({ machines, selectedMachine, onSelect, onAddNew, loadin
             className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-[13px] font-semibold bg-primary text-on-primary hover:bg-primary/90 shadow-sm transition-all active:scale-[0.97]"
           >
             <span className="material-symbols-outlined text-[16px]">add</span>
-            Mesin Baru
+            Topik Baru
           </button>
         </div>
 
@@ -102,14 +102,14 @@ function MachineSelector({ machines, selectedMachine, onSelect, onAddNew, loadin
           >
             <div className="bg-primary/5 border border-primary/15 rounded-lg p-4 space-y-3">
               <div className="flex items-center gap-2 mb-1">
-                <span className="material-symbols-outlined text-primary text-[16px]">precision_manufacturing</span>
-                <span className="text-[13px] font-semibold text-primary">Tambah Mesin Baru</span>
+                <span className="material-symbols-outlined text-primary text-[16px]">menu_book</span>
+                <span className="text-[13px] font-semibold text-primary">Tambah Topik / Mesin Baru</span>
               </div>
               <input
                 type="text"
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
-                placeholder="Nama mesin (contoh: Mesin Cutting Fiber)"
+                placeholder="Nama topik (contoh: Mesin Cutting / Info Perusahaan)"
                 className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-white text-[13px] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
               />
               <input
@@ -143,7 +143,7 @@ function MachineSelector({ machines, selectedMachine, onSelect, onAddNew, loadin
                   : 'bg-white text-on-surface-variant border-outline-variant hover:border-primary hover:text-primary'
               }`}
             >
-              <span className="material-symbols-outlined text-[14px]">precision_manufacturing</span>
+              <span className="material-symbols-outlined text-[14px]">menu_book</span>
               {m.name}
             </button>
           ))}
@@ -336,9 +336,9 @@ export default function MachineDatabasePage() {
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-2">
         <div>
-          <h1 className="font-display-lg text-display-lg text-on-surface mb-1">Database Jawaban Mesin</h1>
+          <h1 className="font-display-lg text-display-lg text-on-surface mb-1">Database Pengetahuan</h1>
           <p className="font-body-md text-body-md text-on-surface-variant max-w-xl">
-            Kelola template jawaban untuk setiap mesin. Data ini digunakan AI untuk memberikan rekomendasi balasan yang lebih akurat.
+            Kelola template jawaban, spesifikasi mesin, dan informasi perusahaan. Data ini digunakan AI untuk memberikan rekomendasi balasan yang lebih akurat.
           </p>
         </div>
       </motion.div>
@@ -348,8 +348,8 @@ export default function MachineDatabasePage() {
         className="bg-white border border-outline-variant rounded-xl p-5 shadow-sm"
       >
         <div className="flex items-center gap-2 mb-4">
-          <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>precision_manufacturing</span>
-          <h2 className="text-[16px] font-semibold text-on-surface">Pilih Mesin</h2>
+          <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>menu_book</span>
+          <h2 className="text-[16px] font-semibold text-on-surface">Pilih Topik / Mesin</h2>
         </div>
         <MachineSelector
           machines={machines}
@@ -369,7 +369,7 @@ export default function MachineDatabasePage() {
           <div className="flex items-center justify-between px-5 py-4 border-b border-outline-variant/50 bg-surface-container-low/30">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-                <span className="material-symbols-outlined text-on-primary text-[20px]">precision_manufacturing</span>
+                <span className="material-symbols-outlined text-on-primary text-[20px]">menu_book</span>
               </div>
               <div>
                 <h3 className="text-[16px] font-bold text-on-surface">{selectedMachine.name}</h3>
@@ -385,7 +385,7 @@ export default function MachineDatabasePage() {
               <button
                 onClick={() => setDeleteConfirm(selectedMachine.id)}
                 className="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:text-error hover:bg-error/5 transition-colors"
-                title="Hapus Mesin"
+                title="Hapus Topik"
               >
                 <span className="material-symbols-outlined text-[18px]">delete</span>
               </button>
@@ -461,9 +461,9 @@ export default function MachineDatabasePage() {
                 <div className="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center mx-auto mb-4">
                   <span className="material-symbols-outlined text-3xl text-outline">chat_add_on</span>
                 </div>
-                <h3 className="text-[15px] font-semibold text-on-surface mb-1">Belum Ada Jawaban</h3>
+                <h3 className="text-[15px] font-semibold text-on-surface mb-1">Belum Ada Informasi</h3>
                 <p className="text-[13px] text-on-surface-variant max-w-xs mx-auto">
-                  Tambahkan template jawaban untuk mesin ini agar AI bisa memberikan rekomendasi lebih akurat.
+                  Tambahkan pertanyaan umum dan jawaban untuk topik ini agar AI bisa memberikan rekomendasi lebih akurat.
                 </p>
               </div>
             )}
@@ -477,11 +477,11 @@ export default function MachineDatabasePage() {
           className="bg-white border border-outline-variant rounded-xl p-12 text-center shadow-sm"
         >
           <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-            <span className="material-symbols-outlined text-4xl text-primary">precision_manufacturing</span>
+            <span className="material-symbols-outlined text-4xl text-primary">menu_book</span>
           </div>
-          <h3 className="text-[18px] font-bold text-on-surface mb-2">Mulai Database Mesin Anda</h3>
+          <h3 className="text-[18px] font-bold text-on-surface mb-2">Mulai Database Pengetahuan Anda</h3>
           <p className="text-[14px] text-on-surface-variant max-w-md mx-auto mb-6">
-            Tambahkan mesin pertama Anda dan isi dengan template jawaban. AI akan menggunakan data ini untuk rekomendasi yang lebih akurat.
+            Tambahkan topik informasi atau mesin pertama Anda. AI akan menggunakan data ini untuk rekomendasi yang lebih akurat.
           </p>
         </motion.div>
       )}
@@ -493,12 +493,12 @@ export default function MachineDatabasePage() {
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={e => e.stopPropagation()} className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-xl bg-error/10 flex items-center justify-center"><span className="material-symbols-outlined text-error">warning</span></div>
-                <h3 className="text-[16px] font-bold text-on-surface">Hapus Mesin?</h3>
+                <h3 className="text-[16px] font-bold text-on-surface">Hapus Topik?</h3>
               </div>
-              <p className="text-[13px] text-on-surface-variant mb-6">Semua template jawaban untuk mesin ini juga akan dihapus. Tindakan ini tidak dapat dibatalkan.</p>
+              <p className="text-[13px] text-on-surface-variant mb-6">Semua informasi dan template jawaban untuk topik ini juga akan dihapus. Tindakan ini tidak dapat dibatalkan.</p>
               <div className="flex gap-2 justify-end">
                 <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-[13px] font-medium text-on-surface-variant rounded-lg hover:bg-surface-container transition-colors">Batal</button>
-                <button onClick={() => handleDeleteMachine(deleteConfirm)} className="px-4 py-2 text-[13px] font-semibold bg-error text-on-error rounded-lg hover:bg-error/90 transition-all">Hapus Mesin</button>
+                <button onClick={() => handleDeleteMachine(deleteConfirm)} className="px-4 py-2 text-[13px] font-semibold bg-error text-on-error rounded-lg hover:bg-error/90 transition-all">Hapus Topik</button>
               </div>
             </motion.div>
           </motion.div>

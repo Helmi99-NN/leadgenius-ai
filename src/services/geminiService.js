@@ -2,6 +2,7 @@
 // LeadGenius AI — Gemini Vision Service
 // Analisis screenshot chat dengan Gemini AI
 // ============================================
+import { findRelevantReplies } from './machineService'
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY
 
@@ -51,6 +52,7 @@ Format JSON yang diharapkan:
   ],
   "product": "produk yang dibahas",
   "intent": "deskripsi niat pembelian",
+  "isCustomerLastMessage": boolean (true jika pesan terakhir dikirim oleh pelanggan, false jika oleh kita/toko),
   "bestReply": "rekomendasi balasan terbaik dan paling efektif untuk saat ini (BAHASA INDONESIA)",
   "replies": {
     "hard": ["balasan gaya penjualan agresif opsi 1", "balasan gaya agresif opsi 2"],
@@ -184,4 +186,88 @@ export function fileToBase64(file) {
     reader.onerror = reject
     reader.readAsDataURL(file)
   })
+}
+
+/**
+ * Generate balasan berdasarkan konteks (dari Generator Balasan page)
+ * Memanfaatkan database mesin untuk memperkaya rekomendasi
+ */
+export async function generateReplyFromContext(customerMessage, toneValue, leadContext = null) {
+  // Ambil keywords dari pesan (sangat sederhana, bisa diperbaiki dengan NLP/Regex)
+  const keywords = customerMessage.split(' ').filter(w => w.length > 3).join(' ')
+  
+  // Coba cari di database mesin (cari tanpa nama spesifik dulu)
+  let dbContext = ''
+  try {
+    const relevantReplies = await findRelevantReplies('', keywords)
+    if (relevantReplies.length > 0) {
+      dbContext = `\nBERIKUT ADALAH DATABASE PENGETAHUAN (MESIN & INFO PERUSAHAAN) YANG RELEVAN UNTUK REFERENSIMU:\n`
+      relevantReplies.forEach((r, i) => {
+        dbContext += `- ${i+1}. Topik/Mesin: ${r.machines?.name}. Info/Pertanyaan: "${r.question}". Jawaban: "${r.answer}"\n`
+      })
+      dbContext += `Gunakan informasi di atas (jika relevan dengan konteks pelanggan) untuk membuat balasan yang akurat.\n`
+    }
+  } catch (err) {
+    console.warn('Gagal memuat konteks mesin:', err)
+  }
+
+  let toneDescription = 'seimbang'
+  if (toneValue < 30) toneDescription = 'sangat formal dan profesional'
+  else if (toneValue < 45) toneDescription = 'sedikit formal tapi sopan'
+  else if (toneValue > 70) toneDescription = 'sangat santai, ramah, layaknya teman'
+  else if (toneValue > 55) toneDescription = 'sedikit santai dan akrab'
+
+  const prompt = `Kamu adalah AI Sales Assistant ahli. Buatlah opsi balasan untuk pesan pelanggan berikut.
+
+Pesan Pelanggan: "${customerMessage}"
+${leadContext ? `\nKonteks Lead:\nNama/Perusahaan: ${leadContext.company}\nStatus: ${leadContext.category}\n` : ''}
+${dbContext}
+Tone Penulisan yang Diinginkan: ${toneDescription} (Nilai: ${toneValue}/100, di mana 1=Sangat Formal, 100=Sangat Santai).
+Gunakan bahasa Indonesia yang natural, jangan kaku.
+
+Balas dengan format JSON murni:
+{
+  "replies": {
+    "hard": ["balasan penjualan agresif/mendesak 1", "balasan penjualan agresif/mendesak 2", "balasan penjualan agresif/mendesak 3"],
+    "soft": ["balasan ramah/konsultatif 1", "balasan ramah/konsultatif 2", "balasan ramah/konsultatif 3"],
+    "authority": ["balasan menonjolkan keahlian/kualitas/garansi 1", "balasan menonjolkan otoritas 2", "balasan menonjolkan keahlian 3"],
+    "scarcity": ["balasan menonjolkan kelangkaan/urgensi 1", "balasan kelangkaan stok 2", "balasan promo terbatas 3"]
+  }
+}`
+
+  const requestBody = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
+  }
+
+  let lastError = null
+
+  for (const model of MODELS) {
+    try {
+      const url = getApiUrl(model)
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      })
+
+      if (response.status === 429) {
+        await sleep(2000)
+        continue
+      }
+
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+
+      const data = await response.json()
+      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+      const cleanedText = rawText.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim()
+      
+      const result = JSON.parse(cleanedText)
+      return result.replies
+    } catch (err) {
+      lastError = err
+    }
+  }
+
+  throw new Error('Gagal generate balasan: ' + (lastError?.message || 'Semua model gagal'))
 }

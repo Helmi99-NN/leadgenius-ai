@@ -74,7 +74,7 @@ const tabLabels = {
   scarcity: 'Kelangkaan',
 }
 
-export default function ReplyOutputPanel({ activeTab, onTabChange }) {
+export default function ReplyOutputPanel({ activeTab, onTabChange, replies, isGenerating }) {
   const [copiedIdx, setCopiedIdx] = useState(null)
 
   const handleCopy = (text, idx) => {
@@ -83,7 +83,7 @@ export default function ReplyOutputPanel({ activeTab, onTabChange }) {
     setTimeout(() => setCopiedIdx(null), 2000)
   }
 
-  const replies = repliesByTab[activeTab] || repliesByTab.hard
+  const currentReplies = replies?.[activeTab] || repliesByTab[activeTab] || repliesByTab.hard
 
   return (
     <motion.div
@@ -122,22 +122,42 @@ export default function ReplyOutputPanel({ activeTab, onTabChange }) {
 
       {/* Daftar Opsi Balasan */}
       <AnimatePresence mode="wait">
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, x: 12 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -12 }}
-          transition={{ duration: 0.2 }}
-          className="space-y-4 flex-1"
-        >
-          {replies.map((reply, idx) => (
-            <div
-              key={idx}
-              className="border border-outline-variant rounded-lg p-4 bg-surface-bright relative group hover:border-primary transition-colors"
-            >
-              {/* Aksen kiri untuk opsi pertama */}
-              {reply.highlighted && (
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary-fixed rounded-l-lg" />
+        {isGenerating ? (
+          <motion.div
+            key="loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="space-y-4 flex-1"
+          >
+            {[1, 2, 3].map(i => (
+              <div key={i} className="border border-outline-variant rounded-lg p-4 bg-surface-bright animate-pulse">
+                <div className="h-4 bg-surface-container-high rounded w-full mb-2"></div>
+                <div className="h-4 bg-surface-container-high rounded w-5/6 mb-4"></div>
+                <div className="flex justify-end gap-2">
+                  <div className="h-8 w-16 bg-surface-container-high rounded"></div>
+                  <div className="h-8 w-20 bg-surface-container-high rounded"></div>
+                </div>
+              </div>
+            ))}
+          </motion.div>
+        ) : (
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, x: 12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -12 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-4 flex-1"
+          >
+            {currentReplies.map((reply, idx) => (
+              <div
+                key={idx}
+                className="border border-outline-variant rounded-lg p-4 bg-surface-bright relative group hover:border-primary transition-colors"
+              >
+                {/* Aksen kiri untuk opsi pertama */}
+                {reply.highlighted && (
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary-fixed rounded-l-lg" />
               )}
 
               <p
@@ -171,6 +191,7 @@ export default function ReplyOutputPanel({ activeTab, onTabChange }) {
             </div>
           ))}
         </motion.div>
+        )}
       </AnimatePresence>
 
       {/* Simpan Template */}

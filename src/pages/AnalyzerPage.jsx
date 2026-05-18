@@ -184,7 +184,13 @@ export default function AnalyzerPage() {
 
           // ── 3. Follow-up: update jika sudah ada, insert jika belum ──
           const followUpDate = new Date()
-          followUpDate.setHours(followUpDate.getHours() + 24)
+          if (result.isCustomerLastMessage) {
+            // Jika pesan terakhir dari customer, balas saat itu juga (sekarang)
+            // Biarkan followUpDate = now
+          } else {
+            // Jika pesan terakhir dari kita, follow up 2 hari lagi
+            followUpDate.setDate(followUpDate.getDate() + 2)
+          }
 
           if (isUpdate) {
             // Update follow-up pending yang sudah ada

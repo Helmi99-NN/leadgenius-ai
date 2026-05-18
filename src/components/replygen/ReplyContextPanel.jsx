@@ -1,18 +1,15 @@
 import { motion } from 'framer-motion'
 
-const leads = [
-  { id: 'budi', label: 'Budi Santoso - Tanya Harga Macbook' },
-  { id: 'siti', label: 'Siti Aminah - Komplain Pengiriman' },
-  { id: 'agus', label: 'Agus Pratama - Minta Diskon Bulk' },
-]
-
 export default function ReplyContextPanel({
+  leads = [],
   selectedLead,
   onLeadChange,
   customerMessage,
   onMessageChange,
   toneValue,
   onToneChange,
+  onGenerate,
+  isGenerating
 }) {
   return (
     <>
@@ -44,6 +41,7 @@ export default function ReplyContextPanel({
               onChange={(e) => onLeadChange(e.target.value)}
               className="w-full bg-surface-bright border border-outline-variant rounded-md py-2 pl-3 pr-10 font-body-md text-body-md text-on-background appearance-none focus:outline-none focus:border-primary"
             >
+              <option value="">Pilih Lead...</option>
               {leads.map((lead) => (
                 <option key={lead.id} value={lead.id}>
                   {lead.label}
@@ -94,10 +92,14 @@ export default function ReplyContextPanel({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.2 }}
-        className="w-full bg-primary-container text-on-primary-container font-label-md text-label-md py-3 rounded-lg font-bold flex justify-center items-center gap-2 hover:bg-primary hover:text-on-primary transition-colors shadow-[0px_4px_20px_rgba(0,0,0,0.04)] active:scale-[0.98]"
+        onClick={onGenerate}
+        disabled={isGenerating || !customerMessage.trim()}
+        className="w-full bg-primary-container text-on-primary-container font-label-md text-label-md py-3 rounded-lg font-bold flex justify-center items-center gap-2 hover:bg-primary hover:text-on-primary transition-colors shadow-[0px_4px_20px_rgba(0,0,0,0.04)] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <span className="material-symbols-outlined">auto_awesome</span>
-        Buat Balasan
+        <span className="material-symbols-outlined">
+          {isGenerating ? 'hourglass_empty' : 'auto_awesome'}
+        </span>
+        {isGenerating ? 'Membuat Balasan...' : 'Buat Balasan'}
       </motion.button>
     </>
   )

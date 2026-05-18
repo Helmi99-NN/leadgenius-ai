@@ -9,7 +9,7 @@ const navItems = [
   { path: '/follow-up', label: 'Tindak Lanjut', icon: 'history_toggle_off' },
   { path: '/reply-generator', label: 'Generator Balasan', icon: 'auto_awesome' },
   { path: '/competitors', label: 'Kompetitor', icon: 'monitoring' },
-  { path: '/machine-database', label: 'Database Mesin', icon: 'precision_manufacturing' },
+  { path: '/machine-database', label: 'Database Pengetahuan', icon: 'menu_book' },
   { path: '/notifications', label: 'Notifikasi', icon: 'notifications', badge: 3 },
 ]
 
