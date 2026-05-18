@@ -148,8 +148,8 @@ export default function ReplyOutputPanel({ activeTab, onTabChange }) {
                 {reply.text}
               </p>
 
-              {/* Tombol aksi hover */}
-              <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              {/* Tombol aksi */}
+              <div className="flex justify-end gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                 <button className="px-3 py-1.5 border border-outline-variant text-primary font-label-sm text-label-sm rounded hover:bg-surface-variant flex items-center gap-1 transition-colors">
                   <span className="material-symbols-outlined text-sm">edit</span>
                   Edit

@@ -18,63 +18,65 @@ export default function SmartSuggestion({ result, isAnalyzing }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.2 }}
-      className="bg-primary-container/30 border border-primary/20 rounded-xl p-gutter relative overflow-hidden"
+      className="bg-white border border-primary/15 rounded-xl overflow-hidden shadow-sm"
     >
-      {/* Background Accent */}
-      <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-primary/10 rounded-full blur-2xl" />
-      
-      <div className="relative z-10">
-        <div className="flex items-center justify-between mb-stack-md">
-          <div className="flex items-center gap-stack-sm">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-on-primary">
-              <span className="material-symbols-outlined text-sm">auto_awesome</span>
-            </div>
-            <div>
-              <h3 className="font-label-lg text-label-lg text-primary font-bold">
-                Saran Jawaban Terbaik
-              </h3>
-              <p className="font-body-xs text-body-xs text-on-surface-variant">
-                Berdasarkan analisis konteks & sentimen
-              </p>
-            </div>
+      {/* Header Bar */}
+      <div className="flex items-center justify-between px-5 py-3 bg-primary/5 border-b border-primary/10">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+            <span className="material-symbols-outlined text-on-primary text-[16px]">auto_awesome</span>
           </div>
-          
-          <button
-            onClick={handleCopy}
-            disabled={isAnalyzing || !result?.bestReply}
-            className={`flex items-center gap-unit px-stack-md py-1.5 rounded-lg font-label-md text-label-md transition-all ${
-              copied 
-                ? 'bg-success text-on-success' 
-                : 'bg-primary text-on-primary hover:bg-primary/90'
-            } disabled:opacity-50`}
-          >
-            <span className="material-symbols-outlined text-sm">
-              {copied ? 'check' : 'content_copy'}
-            </span>
-            {copied ? 'Tersalin' : 'Salin Jawaban'}
-          </button>
+          <div>
+            <h3 className="text-[14px] font-bold text-primary leading-tight">
+              Saran Jawaban Terbaik
+            </h3>
+            <p className="text-[11px] text-on-surface-variant leading-tight">
+              Berdasarkan analisis konteks & sentimen
+            </p>
+          </div>
         </div>
+        
+        <button
+          onClick={handleCopy}
+          disabled={isAnalyzing || !result?.bestReply}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-all duration-200 ${
+            copied 
+              ? 'bg-primary/15 text-primary' 
+              : 'bg-primary text-on-primary hover:bg-primary/90 shadow-sm'
+          } disabled:opacity-40 disabled:cursor-not-allowed`}
+        >
+          <span className="material-symbols-outlined text-[14px]">
+            {copied ? 'check' : 'content_copy'}
+          </span>
+          {copied ? 'Tersalin!' : 'Salin Jawaban'}
+        </button>
+      </div>
 
+      {/* Content */}
+      <div className="p-5">
         {isAnalyzing ? (
-          <div className="space-y-2 animate-pulse">
-            <div className="h-4 bg-primary/10 rounded w-full" />
-            <div className="h-4 bg-primary/10 rounded w-5/6" />
+          <div className="space-y-2.5 animate-pulse">
+            <div className="h-4 bg-primary/8 rounded-md w-full" />
+            <div className="h-4 bg-primary/8 rounded-md w-5/6" />
+            <div className="h-4 bg-primary/8 rounded-md w-2/3" />
           </div>
         ) : (
-          <div className="bg-surface/50 backdrop-blur-sm border border-primary/10 rounded-lg p-stack-md">
-            <p className="font-body-md text-body-md text-on-surface-variant italic leading-relaxed">
-              "{result?.bestReply || 'AI sedang merumuskan jawaban terbaik...'}"
-            </p>
-          </div>
-        )}
+          <>
+            <div className="bg-surface-container-low border border-outline-variant/40 rounded-lg p-4">
+              <p className="text-[14px] text-on-surface leading-relaxed">
+                {result?.bestReply || 'AI sedang merumuskan jawaban terbaik...'}
+              </p>
+            </div>
 
-        {!isAnalyzing && result?.bestReply && (
-          <div className="mt-stack-md flex items-center gap-stack-sm text-primary/70">
-            <span className="material-symbols-outlined text-sm">info</span>
-            <p className="font-body-xs text-body-xs">
-              Klik salin untuk menggunakan jawaban ini langsung di chat.
-            </p>
-          </div>
+            {result?.bestReply && (
+              <div className="mt-3 flex items-center gap-1.5 text-on-surface-variant/60">
+                <span className="material-symbols-outlined text-[13px]">info</span>
+                <p className="text-[11px]">
+                  Klik salin untuk menggunakan jawaban ini langsung di chat.
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </motion.div>

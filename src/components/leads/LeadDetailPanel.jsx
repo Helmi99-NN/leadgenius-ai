@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export default function LeadDetailPanel({ lead, onClose }) {
+  const [copied, setCopied] = useState(false)
   if (!lead) return null
 
   return (
@@ -88,11 +90,11 @@ export default function LeadDetailPanel({ lead, onClose }) {
 
                   {/* Rekomendasi AI */}
                   {lead.aiRecommendation && (
-                    <div className="mt-4 p-3 bg-primary-container/20 border border-primary/30 rounded-lg flex gap-3 items-start">
+                    <div className="mt-4 p-3 bg-primary-container/20 border border-primary/30 rounded-lg flex gap-3 items-start relative group">
                       <span className="material-symbols-outlined text-primary mt-0.5">
                         lightbulb
                       </span>
-                      <div>
+                      <div className="flex-1 pr-8">
                         <p className="font-label-md text-label-md text-primary mb-1">
                           Rekomendasi AI
                         </p>
@@ -100,6 +102,21 @@ export default function LeadDetailPanel({ lead, onClose }) {
                           {lead.aiRecommendation}
                         </p>
                       </div>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(lead.aiRecommendation)
+                          setCopied(true)
+                          setTimeout(() => setCopied(false), 2000)
+                        }}
+                        className={`absolute top-3 right-3 p-1.5 rounded-md bg-surface border transition-colors md:opacity-0 md:group-hover:opacity-100 ${
+                          copied ? 'text-primary border-primary' : 'border-outline-variant text-on-surface-variant hover:text-primary'
+                        }`}
+                        title="Salin Rekomendasi"
+                      >
+                        <span className="material-symbols-outlined text-sm">
+                          {copied ? 'check' : 'content_copy'}
+                        </span>
+                      </button>
                     </div>
                   )}
                 </div>

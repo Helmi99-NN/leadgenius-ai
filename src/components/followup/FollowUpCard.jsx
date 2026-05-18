@@ -5,12 +5,11 @@ import { updateFollowUpStatus } from '../../services/followUpService'
 export default function FollowUpCard({ item, index }) {
   const [sent, setSent] = useState(false)
   const [isCompleted, setIsCompleted] = useState(false)
-  const isEven = index % 2 === 0
+  const [copiedDraft, setCopiedDraft] = useState(false)
 
   const handleSend = async () => {
     try {
       setSent(true)
-      // Simulasikan pengiriman dan tandai selesai di DB
       await updateFollowUpStatus(item.id, 'completed')
       setTimeout(() => setIsCompleted(true), 1500)
     } catch (err) {
@@ -28,134 +27,161 @@ export default function FollowUpCard({ item, index }) {
     }
   }
 
-  if (isCompleted) return null // Sembunyikan jika sudah selesai
+  const handleCopyDraft = () => {
+    if (!item.aiDraft) return
+    navigator.clipboard.writeText(item.aiDraft.replace(/^"|"$/g, ''))
+    setCopiedDraft(true)
+    setTimeout(() => setCopiedDraft(false), 2000)
+  }
 
+  if (isCompleted) return null
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.1 + 0.15 }}
-      className={`relative flex items-start justify-between md:justify-normal group ${
-        isEven ? '' : 'md:flex-row-reverse'
+      transition={{ duration: 0.35, delay: index * 0.08 + 0.1 }}
+      className={`bg-white border border-outline-variant rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden ${
+        item.status === 'overdue' ? 'border-l-4 border-l-error' : item.status === 'today' ? 'border-l-4 border-l-primary' : ''
       }`}
     >
-      {/* Indikator Timeline */}
-      <div
-        className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-surface shadow shrink-0 z-10 ${item.indicatorColor} ${item.indicatorTextColor} ${item.indicatorBorder || ''} md:order-1 ${
-          isEven ? 'md:-translate-x-1/2' : 'md:translate-x-1/2'
-        }`}
-        style={{ position: 'relative' }}
-      >
-        <span
-          className="material-symbols-outlined text-[20px]"
-          style={{ fontVariationSettings: "'FILL' 1" }}
-        >
-          {item.indicatorIcon}
-        </span>
-      </div>
-
-      {/* Konten Kartu */}
-      <div
-        className={`w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] ml-4 md:ml-0 bg-white border border-outline-variant rounded-xl p-stack-md shadow-sm hover:shadow-md transition-shadow ${
-          item.hasTopBorder ? 'border-t-4 border-t-primary' : ''
-        }`}
-      >
-        {/* Header */}
-        <div className="flex justify-between items-start mb-stack-sm">
-          <div>
-            <span
-              className={`inline-block px-2 py-1 rounded font-label-sm text-label-sm mb-unit ${item.badgeBg} ${item.badgeText} ${
-                item.status !== 'overdue' ? 'border border-outline-variant' : ''
-              }`}
+      {/* Card Header */}
+      <div className="p-5 pb-4">
+        <div className="flex items-start justify-between gap-3">
+          {/* Left: Status + Company */}
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            {/* Status Indicator */}
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.indicatorColor} ${item.indicatorTextColor}`}
             >
-              {item.statusLabel}
-            </span>
-            <h3 className="font-headline-md text-headline-md text-on-surface">
-              {item.company}
-            </h3>
-            <p className="font-body-md text-body-md text-on-surface-variant">
-              {item.description}
-            </p>
+              <span
+                className="material-symbols-outlined text-[18px]"
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              >
+                {item.indicatorIcon}
+              </span>
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <h3 className="font-semibold text-on-surface text-[15px] leading-tight truncate">
+                  {item.company}
+                </h3>
+                <span
+                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold leading-none whitespace-nowrap ${item.badgeBg} ${item.badgeText} ${
+                    item.status !== 'overdue' ? 'border border-outline-variant/50' : ''
+                  }`}
+                >
+                  {item.statusLabel}
+                </span>
+              </div>
+              <p className="text-on-surface-variant text-[13px] leading-snug line-clamp-2">
+                {item.description}
+              </p>
+            </div>
           </div>
-          <div className="h-8 w-8 rounded-full bg-surface-container overflow-hidden border border-outline-variant flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-on-surface-variant">
+
+          {/* Right: Platform Icon */}
+          <div className="w-8 h-8 rounded-lg bg-surface-container-low border border-outline-variant/50 flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-on-surface-variant text-[16px]">
               {item.icon}
             </span>
           </div>
         </div>
+      </div>
 
-        {/* Draf Balasan AI */}
-        <div
-          className={`${item.aiDraftBg} border ${item.aiDraftBorder} rounded p-stack-sm mb-stack-md`}
-        >
-          <div
-            className={`flex items-center gap-unit ${item.aiDraftLabelColor} text-xs mb-1 font-medium`}
-          >
-            <span className="material-symbols-outlined text-[14px]">
-              auto_awesome
-            </span>
-            Saran Balasan
+      {/* AI Suggestion Section */}
+      {item.aiDraft && (
+        <div className="mx-5 mb-4">
+          <div className="bg-surface-container-low border border-outline-variant/60 rounded-lg overflow-hidden">
+            {/* Suggestion Header */}
+            <div className="flex items-center justify-between px-3 py-2 bg-surface-container/50 border-b border-outline-variant/40">
+              <div className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-primary text-[14px]">
+                  auto_awesome
+                </span>
+                <span className="text-[11px] font-semibold text-primary uppercase tracking-wider">
+                  Saran Balasan AI
+                </span>
+              </div>
+              <button
+                onClick={handleCopyDraft}
+                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-all ${
+                  copiedDraft
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-on-surface-variant hover:text-primary hover:bg-primary/5'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[13px]">
+                  {copiedDraft ? 'check' : 'content_copy'}
+                </span>
+                {copiedDraft ? 'Tersalin' : 'Salin'}
+              </button>
+            </div>
+            {/* Suggestion Content */}
+            <div className="px-3 py-3">
+              <p className="text-[13px] text-on-surface-variant leading-relaxed italic">
+                "{item.aiDraft}"
+              </p>
+            </div>
           </div>
-          <p
-            className={`font-body-md text-label-md ${item.aiDraftTextColor} italic`}
-          >
-            {item.aiDraft}
-          </p>
         </div>
+      )}
 
-        {/* Tombol Aksi */}
-        <div className="flex flex-wrap gap-stack-sm">
+      {/* Action Buttons */}
+      <div className="px-5 pb-4">
+        <div className="flex items-center gap-2">
           {item.actions.includes('send') && (
             <button
               onClick={handleSend}
-              className={`font-label-md text-label-md px-stack-md py-stack-sm rounded flex-1 flex items-center justify-center gap-unit transition-all active:scale-95 ${
+              className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-all duration-200 active:scale-[0.97] ${
                 sent
-                  ? 'bg-primary-container text-on-primary-container'
-                  : 'bg-primary text-on-primary hover:bg-primary-container hover:text-on-primary-container'
+                  ? 'bg-primary-container/30 text-primary border border-primary/20'
+                  : 'bg-primary text-on-primary hover:bg-primary/90 shadow-sm'
               }`}
             >
-              <span className="material-symbols-outlined text-[18px]">
-                {sent ? 'check' : 'send'}
+              <span className="material-symbols-outlined text-[16px]">
+                {sent ? 'check_circle' : 'send'}
               </span>
               {sent ? 'Terkirim!' : 'Kirim Sekarang'}
             </button>
           )}
 
           {item.actions.includes('review') && (
-            <button className="bg-surface hover:bg-surface-container border border-outline-variant text-on-surface font-label-md text-label-md px-stack-md py-stack-sm rounded flex-1 transition-colors">
+            <button className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-[13px] font-semibold bg-surface-container hover:bg-surface-container-high border border-outline-variant text-on-surface transition-colors">
+              <span className="material-symbols-outlined text-[16px]">visibility</span>
               Tinjau Draf
             </button>
           )}
 
           {item.actions.includes('snooze') && (
             <button
-              className="bg-surface hover:bg-surface-container border border-outline-variant text-on-surface font-label-md text-label-md px-stack-sm py-stack-sm rounded transition-colors"
+              className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-[13px] font-medium bg-surface hover:bg-surface-container border border-outline-variant text-on-surface-variant hover:text-on-surface transition-colors"
               title="Tunda"
             >
-              <span className="material-symbols-outlined text-[18px]">snooze</span>
+              <span className="material-symbols-outlined text-[16px]">snooze</span>
+              <span className="hidden sm:inline">Tunda</span>
             </button>
           )}
 
           {item.actions.includes('complete') && (
             <button
               onClick={handleComplete}
-              className="bg-surface hover:bg-surface-container border border-outline-variant text-on-surface font-label-md text-label-md px-stack-sm py-stack-sm rounded transition-colors"
+              className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-[13px] font-medium bg-surface hover:bg-surface-container border border-outline-variant text-on-surface-variant hover:text-primary transition-colors"
               title="Selesai"
             >
-              <span className="material-symbols-outlined text-[18px]">check</span>
+              <span className="material-symbols-outlined text-[16px]">check_circle</span>
+              <span className="hidden sm:inline">Selesai</span>
             </button>
           )}
 
-
           {item.actions.includes('reschedule') && (
             <button
-              className="bg-surface hover:bg-surface-container border border-outline-variant text-on-surface font-label-md text-label-md px-stack-sm py-stack-sm rounded transition-colors"
+              className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-[13px] font-medium bg-surface hover:bg-surface-container border border-outline-variant text-on-surface-variant hover:text-on-surface transition-colors"
               title="Jadwalkan Ulang"
             >
-              <span className="material-symbols-outlined text-[18px]">
-                edit_calendar
-              </span>
+              <span className="material-symbols-outlined text-[16px]">edit_calendar</span>
+              <span className="hidden sm:inline">Jadwal Ulang</span>
             </button>
           )}
         </div>

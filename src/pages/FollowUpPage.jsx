@@ -9,16 +9,18 @@ export default function FollowUpPage() {
       {/* Header Halaman & Aksi Massal */}
       <FollowUpHeader />
 
-      {/* Layout Grid Bento */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
-        {/* Kolom Kiri: Panel Wawasan AI */}
-        <div className="lg:col-span-4 flex flex-col gap-gutter">
-          <AIInsightPanel />
+      {/* Layout Grid Bento - Reversed: Cards first on mobile */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Kolom Kiri: Daftar Tindak Lanjut */}
+        <div className="lg:col-span-8 order-2 lg:order-1">
+          <FollowUpTimeline />
         </div>
 
-        {/* Kolom Kanan: Tampilan Timeline */}
-        <div className="lg:col-span-8">
-          <FollowUpTimeline />
+        {/* Kolom Kanan: Panel Wawasan AI */}
+        <div className="lg:col-span-4 order-1 lg:order-2">
+          <div className="lg:sticky lg:top-6 space-y-4">
+            <AIInsightPanel />
+          </div>
         </div>
       </div>
     </>

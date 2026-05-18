@@ -45,7 +45,7 @@ export default function AIInsightPanel() {
         const conversion = ((hot / totalLeads) * 100).toFixed(1)
 
         setStats({
-          overdue: (overdueData || []).length,
+          overdue: overdueCount,
           completedWeek,
           totalWeek,
           conversion,
@@ -59,97 +59,126 @@ export default function AIInsightPanel() {
     fetchInsightData()
   }, [])
 
-  if (stats.loading) return null
+  if (stats.loading) {
+    return (
+      <div className="bg-white border border-outline-variant rounded-xl p-5 animate-pulse">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-5 h-5 rounded bg-surface-container-high" />
+          <div className="w-24 h-5 rounded bg-surface-container-high" />
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="bg-surface-container-low rounded-lg p-4">
+              <div className="w-1/2 h-3 rounded bg-surface-container-high mb-2" />
+              <div className="w-1/3 h-6 rounded bg-surface-container-high" />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   const completionPercent = Math.min(100, Math.round((stats.completedWeek / stats.totalWeek) * 100)) || 0
+
+  const insightCards = [
+    {
+      label: 'Perlu Perhatian',
+      value: stats.overdue,
+      suffix: 'terlambat',
+      icon: 'warning',
+      color: stats.overdue > 0 ? 'text-error' : 'text-primary',
+      bgColor: stats.overdue > 0 ? 'bg-error/5' : 'bg-primary/5',
+      barColor: stats.overdue > 0 ? 'bg-error' : 'bg-primary',
+      barWidth: stats.overdue > 0 ? '25%' : '0%',
+    },
+    {
+      label: 'Tingkat Konversi',
+      value: `${stats.conversion}%`,
+      icon: 'trending_up',
+      color: 'text-primary',
+      bgColor: 'bg-primary/5',
+    },
+    {
+      label: 'Rata-rata Waktu Respons',
+      value: '2.4',
+      suffix: 'jam',
+      icon: 'schedule',
+      color: 'text-on-surface',
+      bgColor: 'bg-surface-container-low',
+    },
+    {
+      label: 'Diselesaikan Minggu Ini',
+      value: stats.completedWeek,
+      suffix: `dari ${stats.totalWeek}`,
+      icon: 'task_alt',
+      color: 'text-primary',
+      bgColor: 'bg-primary/5',
+      barColor: 'bg-primary',
+      barWidth: `${completionPercent}%`,
+    },
+  ]
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.1 }}
-      className="bg-white border border-outline-variant rounded-xl p-gutter shadow-sm hover:shadow-md transition-shadow border-t-4 border-t-primary"
+      className="bg-white border border-outline-variant rounded-xl overflow-hidden shadow-sm"
     >
       {/* Header */}
-      <div className="flex items-center gap-stack-sm mb-stack-md">
+      <div className="flex items-center gap-2 px-5 py-4 border-b border-outline-variant/50">
         <span
-          className="material-symbols-outlined text-primary"
+          className="material-symbols-outlined text-primary text-[20px]"
           style={{ fontVariationSettings: "'FILL' 1" }}
         >
           auto_awesome
         </span>
-        <h2 className="font-headline-md text-headline-md text-on-surface">
+        <h2 className="text-[16px] font-semibold text-on-surface">
           Wawasan AI
         </h2>
       </div>
 
-      <div className="space-y-stack-md">
-        {/* Peringatan Terlambat */}
-        <div className="bg-surface-container-low rounded-lg p-stack-md border border-outline-variant">
-          <p className="font-body-md text-body-md text-on-surface-variant mb-stack-sm">
-            Anda memiliki{' '}
-            <strong className={stats.overdue > 0 ? "text-error" : "text-primary"}>
-              {stats.overdue} Terlambat
-            </strong> tindak lanjut
-            yang memerlukan perhatian segera.
-          </p>
-          <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
-            <motion.div
-              className={`${stats.overdue > 0 ? 'bg-error' : 'bg-primary'} h-full rounded-full`}
-              initial={{ width: 0 }}
-              animate={{ width: stats.overdue > 0 ? '25%' : '0%' }}
-              transition={{ duration: 1, delay: 0.5, ease: 'easeOut' }}
-            />
-          </div>
-        </div>
-
-        {/* Tingkat Konversi */}
-        <div className="bg-surface-container-low rounded-lg p-stack-md border border-outline-variant">
-          <div className="flex justify-between items-center mb-unit">
-            <span className="font-label-md text-label-md text-on-surface">
-              Tingkat Konversi
-            </span>
-          </div>
-          <div className="font-headline-lg text-headline-lg text-primary">
-            {stats.conversion}%
-          </div>
-        </div>
-
-        {/* Statistik Tambahan */}
-        <div className="bg-surface-container-low rounded-lg p-stack-md border border-outline-variant">
-          <div className="flex justify-between items-center mb-unit">
-            <span className="font-label-md text-label-md text-on-surface">
-              Rata-rata Waktu Respons
-            </span>
-          </div>
-          <div className="font-headline-lg text-headline-lg text-on-surface">
-            2.4 <span className="text-body-md text-on-surface-variant">jam</span>
-          </div>
-        </div>
-
-        <div className="bg-surface-container-low rounded-lg p-stack-md border border-outline-variant">
-          <div className="flex justify-between items-center mb-unit">
-            <span className="font-label-md text-label-md text-on-surface">
-              Diselesaikan Minggu Ini
-            </span>
-          </div>
-          <div className="font-headline-lg text-headline-lg text-primary">
-            {stats.completedWeek}{' '}
-            <span className="text-body-md text-on-surface-variant">
-              dari {stats.totalWeek}
-            </span>
-          </div>
-          <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden mt-stack-sm">
-            <motion.div
-              className="bg-primary h-full rounded-full"
-              initial={{ width: 0 }}
-              animate={{ width: `${completionPercent}%` }}
-              transition={{ duration: 1, delay: 0.7, ease: 'easeOut' }}
-            />
-          </div>
-        </div>
+      {/* Stats Grid */}
+      <div className="p-4 space-y-3">
+        {insightCards.map((card, idx) => (
+          <motion.div
+            key={idx}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3, delay: idx * 0.08 }}
+            className={`rounded-lg p-4 ${card.bgColor} border border-outline-variant/30`}
+          >
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-1.5">
+                <span className={`material-symbols-outlined text-[14px] ${card.color}`}>
+                  {card.icon}
+                </span>
+                <span className="text-[12px] font-medium text-on-surface-variant">
+                  {card.label}
+                </span>
+              </div>
+            </div>
+            <div className={`text-[24px] font-bold ${card.color} leading-tight`}>
+              {card.value}
+              {card.suffix && (
+                <span className="text-[13px] font-normal text-on-surface-variant ml-1">
+                  {card.suffix}
+                </span>
+              )}
+            </div>
+            {card.barColor && (
+              <div className="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden mt-2.5">
+                <motion.div
+                  className={`${card.barColor} h-full rounded-full`}
+                  initial={{ width: 0 }}
+                  animate={{ width: card.barWidth }}
+                  transition={{ duration: 1, delay: 0.5, ease: 'easeOut' }}
+                />
+              </div>
+            )}
+          </motion.div>
+        ))}
       </div>
     </motion.div>
   )
 }
-
