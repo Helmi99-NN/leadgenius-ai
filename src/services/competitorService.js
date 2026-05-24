@@ -9,3 +9,14 @@ export async function getCompetitors() {
   if (error) throw error
   return data || []
 }
+
+export async function addCompetitor(competitorData) {
+  const { data, error } = await supabase
+    .from('competitors')
+    .insert(competitorData)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}

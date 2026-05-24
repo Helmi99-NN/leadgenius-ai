@@ -36,7 +36,7 @@
     'position:fixed;bottom:24px;left:24px;z-index:2147483647;' + // Z-index maksimal
     'display:flex;align-items:center;gap:8px;padding:12px 20px;' +
     'background:' + platformColor + ';color:white;border-radius:100px;' +
-    'cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.4);' +
+    'cursor:grab;box-shadow:0 4px 20px rgba(0,0,0,0.4);' +
     'font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;font-size:13px;font-weight:600;' +
     'transition:all 0.2s;user-select:none;border:1px solid rgba(255,255,255,0.2);">' +
     '<span style="font-size:16px;">📸</span>' +
@@ -59,7 +59,50 @@
     }
   }
 
-  btn.addEventListener('click', function() {
+  var isDragging = false;
+  var startX, startY, initialX, initialY;
+
+  btn.addEventListener('mousedown', function(e) {
+    isDragging = false;
+    startX = e.clientX;
+    startY = e.clientY;
+    var rect = btn.getBoundingClientRect();
+    initialX = rect.left;
+    initialY = rect.top;
+    
+    btn.style.cursor = 'grabbing';
+    btn.style.transition = 'none';
+
+    function onMouseMove(e) {
+      var dx = e.clientX - startX;
+      var dy = e.clientY - startY;
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+        isDragging = true;
+      }
+      
+      btn.style.left = (initialX + dx) + 'px';
+      btn.style.top = (initialY + dy) + 'px';
+      btn.style.bottom = 'auto'; // override bottom
+      btn.style.right = 'auto'; // override right
+    }
+
+    function onMouseUp() {
+      btn.style.cursor = 'grab';
+      btn.style.transition = 'all 0.2s';
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    }
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  });
+
+  btn.addEventListener('click', function(e) {
+    if (isDragging) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     // Re-check connection
     if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) {
       updateStatus('⚠️ Refresh (F5)', '#dc2626', 4000);

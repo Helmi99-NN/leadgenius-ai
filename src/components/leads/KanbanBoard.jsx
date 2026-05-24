@@ -28,13 +28,13 @@ export default function KanbanBoard({ leads, onLeadClick, onDeleteLead }) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.1 }}
-      className="grid grid-cols-1 md:grid-cols-3 gap-gutter min-h-[500px]"
+      className="flex md:grid md:grid-cols-3 gap-gutter min-h-[500px] overflow-x-auto snap-x snap-mandatory pb-4 md:pb-0 custom-scrollbar"
       style={{ height: 'calc(100vh - 380px)' }}
     >
       {columns.map((col, colIdx) => (
         <div
           key={col.key}
-          className="flex flex-col h-full bg-surface-container rounded-xl p-stack-md border border-outline-variant/50"
+          className="flex flex-col h-full bg-surface-container rounded-xl p-stack-md border border-outline-variant/50 min-w-[85vw] md:min-w-0 snap-center shrink-0"
         >
           {/* Header Kolom */}
           <div className="flex items-center justify-between mb-stack-md">

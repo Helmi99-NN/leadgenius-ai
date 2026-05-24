@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { updateFollowUpStatus } from '../../services/followUpService'
 
-export default function FollowUpCard({ item, index }) {
+export default function FollowUpCard({ item, index, onLeadClick }) {
   const [sent, setSent] = useState(false)
   const [isCompleted, setIsCompleted] = useState(false)
   const [copiedDraft, setCopiedDraft] = useState(false)
@@ -64,7 +64,10 @@ export default function FollowUpCard({ item, index }) {
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <h3 className="font-semibold text-on-surface text-[15px] leading-tight truncate">
+                <h3 
+                  className="font-semibold text-on-surface text-[15px] leading-tight truncate cursor-pointer hover:text-primary transition-colors"
+                  onClick={() => onLeadClick && onLeadClick(item.lead_id)}
+                >
                   {item.company}
                 </h3>
                 <span

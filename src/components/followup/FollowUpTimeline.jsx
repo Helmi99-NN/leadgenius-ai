@@ -79,7 +79,7 @@ function groupByStatus(items) {
   return groups
 }
 
-export default function FollowUpTimeline() {
+export default function FollowUpTimeline({ onLeadClick }) {
   const [followUps, setFollowUps] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -91,6 +91,7 @@ export default function FollowUpTimeline() {
           const config = getStatusConfig(fu)
           return {
             id: fu.id,
+            lead_id: fu.lead_id,
             ...config,
             company: fu.leads?.company || 'Lead Tidak Dikenal',
             description: fu.description || 'Tindak lanjut terjadwal',
@@ -183,7 +184,7 @@ export default function FollowUpTimeline() {
             {/* Cards */}
             <div className="space-y-3">
               {group.items.map((item, idx) => (
-                <FollowUpCard key={item.id} item={item} index={idx} />
+                <FollowUpCard key={item.id} item={item} index={idx} onLeadClick={onLeadClick} />
               ))}
             </div>
           </motion.div>

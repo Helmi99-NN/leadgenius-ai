@@ -5,6 +5,7 @@
   "description": "Tangkap screenshot chat dari Shopee, Facebook, Instagram, WhatsApp Web untuk analisis AI otomatis",
   "permissions": [
     "storage",
+    "unlimitedStorage",
     "activeTab",
     "tabs",
     "scripting"

@@ -126,7 +126,7 @@ export default function AIAssistant() {
       {/* Floating Button */}
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all"
+        className="fixed bottom-24 md:bottom-6 right-4 md:right-6 z-[45] w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all"
         style={{
           background: 'linear-gradient(135deg, #076653 0%, #0a9f7f 50%, #38c9a8 100%)',
         }}
@@ -161,7 +161,7 @@ export default function AIAssistant() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.25, ease: 'easeOut' }}
-            className="fixed bottom-24 right-6 z-50 w-[400px] max-w-[calc(100vw-2rem)] bg-surface-container-lowest border border-outline-variant rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            className="fixed bottom-40 md:bottom-24 right-4 md:right-6 z-[45] w-[calc(100vw-2rem)] md:w-[400px] max-w-[400px] bg-surface-container-lowest border border-outline-variant rounded-2xl shadow-2xl flex flex-col overflow-hidden"
             style={{ height: '520px' }}
           >
             {/* Header */}

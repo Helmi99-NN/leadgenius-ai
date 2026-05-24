@@ -246,6 +246,16 @@
       font-weight: 600;
     }
     .footer a:hover { text-decoration: underline; }
+    .env-select {
+      font-size: 10px;
+      font-family: 'Inter', sans-serif;
+      color: #6f7975;
+      background: transparent;
+      border: 1px solid #e1e3e2;
+      border-radius: 4px;
+      padding: 2px 4px;
+      cursor: pointer;
+    }
     .footer .version {
       font-size: 10px;
       color: #6f7975;
@@ -324,7 +334,12 @@
   <!-- Footer -->
   <div class="footer">
     <a href="#" id="open-dashboard">📊 Buka Dashboard</a>
-    <span class="version">v2.0.0</span>
+    <div>
+      <select id="env-select" class="env-select">
+        <option value="http://localhost:5173">Dev (Local)</option>
+        <option value="https://leadgenius-ai-puce.vercel.app">Prod (Vercel)</option>
+      </select>
+    </div>
   </div>
 
   <script src="popup.js"></script>

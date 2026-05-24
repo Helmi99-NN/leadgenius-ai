@@ -3,12 +3,13 @@ import { Outlet } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import Sidebar from './Sidebar'
 import TopBar from './TopBar'
+import BottomNav from './BottomNav'
 
 export default function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="text-on-background font-body-md min-h-screen flex">
+    <div className="text-on-background font-body-md min-h-screen flex pb-20 md:pb-0">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <main className="flex-1 flex flex-col min-w-0">
@@ -23,6 +24,8 @@ export default function MainLayout() {
           <Outlet />
         </motion.div>
       </main>
+
+      <BottomNav />
     </div>
   )
 }

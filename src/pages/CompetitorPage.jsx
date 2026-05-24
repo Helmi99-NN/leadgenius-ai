@@ -2,11 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { getCompetitors } from '../services/competitorService'
 
-const priceAlerts = [
-  { competitor: 'TechCorp Store', product: 'Macbook Air M2', oldPrice: 'Rp 15.500.000', newPrice: 'Rp 13.200.000', change: -15, time: '2 jam lalu' },
-  { competitor: 'MegaElektro', product: 'iPhone 15 Pro', oldPrice: 'Rp 19.000.000', newPrice: 'Rp 17.500.000', change: -8, time: '5 jam lalu' },
-  { competitor: 'BudgetGadget', product: 'Samsung Galaxy S24', oldPrice: 'Rp 12.000.000', newPrice: 'Rp 9.400.000', change: -22, time: '1 hari lalu' },
-]
+import { addCompetitor } from '../services/competitorService'
 
 const threatColors = {
   high: { bg: 'bg-error-container', text: 'text-on-error-container', label: 'Tinggi' },
@@ -17,6 +13,20 @@ const threatColors = {
 export default function CompetitorPage() {
   const [competitors, setCompetitors] = useState([])
   const [loading, setLoading] = useState(true)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [newCompetitor, setNewCompetitor] = useState({ name: '', platform: 'Shopee', products: 0, followers: '0' })
+
+  // Derived state for dynamic price alerts
+  const dynamicPriceAlerts = competitors
+    .filter(c => c.priceChange < 0)
+    .map(c => ({
+      competitor: c.name,
+      product: 'Semua Produk (Rata-rata)',
+      oldPrice: 'Harga Lama', // Simplified for MVP
+      newPrice: c.avgPrice,
+      change: c.priceChange,
+      time: 'Baru saja' // Simplified for MVP
+    }))
 
   useEffect(() => {
     async function fetchData() {
@@ -54,7 +64,10 @@ export default function CompetitorPage() {
             Pantau pergerakan harga dan strategi kompetitor di marketplace.
           </p>
         </div>
-        <button className="bg-primary text-on-primary px-4 py-2 rounded-lg font-label-md text-label-md flex items-center gap-2 hover:opacity-90 transition-opacity border border-black/10">
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="bg-primary text-on-primary px-4 py-2 rounded-lg font-label-md text-label-md flex items-center gap-2 hover:opacity-90 transition-opacity border border-black/10"
+        >
           <span className="material-symbols-outlined text-[18px]">add</span>
           Tambah Kompetitor
         </button>
@@ -126,7 +139,7 @@ export default function CompetitorPage() {
             </h3>
 
             <div className="space-y-stack-md">
-              {priceAlerts.map((alert, idx) => (
+              {dynamicPriceAlerts.length > 0 ? dynamicPriceAlerts.map((alert, idx) => (
                 <div key={idx} className="bg-surface-container-low rounded-lg p-stack-md border border-outline-variant">
                   <div className="flex justify-between items-start mb-1">
                     <div>
@@ -144,7 +157,9 @@ export default function CompetitorPage() {
                     </span>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <p className="text-label-md text-on-surface-variant">Tidak ada peringatan harga saat ini.</p>
+              )}
             </div>
           </motion.div>
         </div>
@@ -242,6 +257,93 @@ export default function CompetitorPage() {
           </motion.div>
         </div>
       </div>
+
+      {/* Modal Tambah Kompetitor */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-surface w-full max-w-md rounded-xl shadow-lg border border-outline-variant overflow-hidden"
+          >
+            <div className="p-gutter border-b border-outline-variant flex justify-between items-center">
+              <h3 className="font-headline-md text-[18px] font-bold text-on-surface">Tambah Kompetitor</h3>
+              <button onClick={() => setIsModalOpen(false)} className="text-on-surface-variant hover:text-on-surface">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="p-gutter space-y-4">
+              <div>
+                <label className="block text-label-sm font-label-sm text-on-surface-variant mb-1">Nama Toko</label>
+                <input
+                  type="text"
+                  value={newCompetitor.name}
+                  onChange={(e) => setNewCompetitor({ ...newCompetitor, name: e.target.value })}
+                  className="w-full bg-surface-bright border border-outline-variant rounded-md py-2 px-3 text-body-md focus:border-primary focus:outline-none"
+                  placeholder="Contoh: TechCorp Store"
+                />
+              </div>
+              <div>
+                <label className="block text-label-sm font-label-sm text-on-surface-variant mb-1">Platform</label>
+                <select
+                  value={newCompetitor.platform}
+                  onChange={(e) => setNewCompetitor({ ...newCompetitor, platform: e.target.value })}
+                  className="w-full bg-surface-bright border border-outline-variant rounded-md py-2 px-3 text-body-md focus:border-primary focus:outline-none"
+                >
+                  <option value="Shopee">Shopee</option>
+                  <option value="Tokopedia">Tokopedia</option>
+                  <option value="Lazada">Lazada</option>
+                  <option value="Tiktok">Tiktok</option>
+                </select>
+              </div>
+            </div>
+            <div className="p-gutter border-t border-outline-variant flex justify-end gap-2 bg-surface-container-lowest">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="px-4 py-2 border border-outline text-on-surface rounded-lg hover:bg-surface-container transition-colors font-label-md text-label-md"
+              >
+                Batal
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const inserted = await addCompetitor({
+                      name: newCompetitor.name,
+                      platform: newCompetitor.platform,
+                      products: 0,
+                      followers: '0',
+                      avg_price: 'Rp 0',
+                      price_change: 0,
+                      response_time: '-',
+                      rating: 0,
+                      threat: 'low'
+                    });
+                    
+                    setCompetitors([
+                      {
+                        ...inserted,
+                        avgPrice: inserted.avg_price,
+                        priceChange: inserted.price_change,
+                        responseTime: inserted.response_time
+                      }, 
+                      ...competitors
+                    ]);
+                    setIsModalOpen(false);
+                    setNewCompetitor({ name: '', platform: 'Shopee', products: 0, followers: '0' });
+                  } catch (err) {
+                    console.error('Gagal tambah kompetitor', err);
+                    alert('Gagal menambah kompetitor');
+                  }
+                }}
+                disabled={!newCompetitor.name}
+                className="px-4 py-2 bg-primary text-on-primary rounded-lg hover:opacity-90 transition-opacity font-label-md text-label-md disabled:opacity-50"
+              >
+                Simpan Kompetitor
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </>
   )
 }

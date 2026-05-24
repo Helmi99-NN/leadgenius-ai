@@ -4,6 +4,7 @@ import {
   getMachines, searchMachines, addMachine, deleteMachine,
   getMachineReplies, addMachineReply, updateMachineReply, deleteMachineReply
 } from '../services/machineService'
+import { extractFAQFromChat } from '../services/geminiService'
 
 // ── Machine Selector / Creator Component ──
 function MachineSelector({ machines, selectedMachine, onSelect, onAddNew, loading }) {
@@ -112,12 +113,12 @@ function MachineSelector({ machines, selectedMachine, onSelect, onAddNew, loadin
                 placeholder="Nama topik (contoh: Mesin Cutting / Info Perusahaan)"
                 className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-white text-[13px] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
               />
-              <input
-                type="text"
+              <textarea
                 value={newDesc}
                 onChange={e => setNewDesc(e.target.value)}
                 placeholder="Deskripsi singkat (opsional)"
-                className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-white text-[13px] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
+                rows={3}
+                className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-white text-[13px] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 resize-y min-h-[80px]"
               />
               <div className="flex gap-2 justify-end">
                 <button onClick={() => setShowAddForm(false)} className="px-3 py-1.5 text-[12px] font-medium text-on-surface-variant hover:text-on-surface rounded-md hover:bg-surface-container transition-colors">Batal</button>
@@ -187,11 +188,11 @@ function ReplyCard({ reply, onEdit, onDelete }) {
       {editing ? (
         <div className="p-4 space-y-3">
           <div>
-            <label className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider mb-1 block">Pertanyaan</label>
+            <label className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider mb-1 block">Judul Informasi / Kata Kunci</label>
             <input value={question} onChange={e => setQuestion(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-outline-variant text-[13px] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30" />
           </div>
           <div>
-            <label className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider mb-1 block">Jawaban</label>
+            <label className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider mb-1 block">Detail Informasi</label>
             <textarea value={answer} onChange={e => setAnswer(e.target.value)} rows={3} className="w-full px-3 py-2 rounded-lg border border-outline-variant text-[13px] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 resize-none" />
           </div>
           <div className="flex gap-2 justify-end">
@@ -252,6 +253,10 @@ export default function MachineDatabasePage() {
   const [newAnswer, setNewAnswer] = useState('')
   const [addingReply, setAddingReply] = useState(false)
   const [showReplyForm, setShowReplyForm] = useState(false)
+  
+  // WA Import State
+  const [importingWA, setImportingWA] = useState(false)
+  const fileInputRef = useRef(null)
 
   // Delete confirmation
   const [deleteConfirm, setDeleteConfirm] = useState(null)
@@ -317,6 +322,41 @@ export default function MachineDatabasePage() {
     setReplies(data)
   }
 
+  async function handleWAImport(e) {
+    const file = e.target.files?.[0]
+    if (!file || !selectedMachine) return
+    
+    setImportingWA(true)
+    try {
+      const text = await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = (e) => resolve(e.target.result)
+        reader.onerror = reject
+        reader.readAsText(file)
+      })
+
+      // Batasi teks maksimal ~30,000 karakter agar tidak melebihi batas token prompt
+      const extractedData = await extractFAQFromChat(text)
+      
+      // Simpan semua data yang diekstrak ke database
+      for (const item of extractedData) {
+        if (item.question && item.answer) {
+          await addMachineReply(selectedMachine.id, item.question, item.answer)
+        }
+      }
+      
+      const updatedData = await getMachineReplies(selectedMachine.id)
+      setReplies(updatedData)
+      alert(`Berhasil mengimpor ${extractedData.length} informasi baru dari histori WhatsApp!`)
+    } catch (err) {
+      console.error(err)
+      alert("Gagal mengimpor WhatsApp: " + err.message)
+    } finally {
+      setImportingWA(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
   async function handleDeleteReply(id) {
     await deleteMachineReply(id)
     const data = await getMachineReplies(selectedMachine.id)
@@ -380,7 +420,7 @@ export default function MachineDatabasePage() {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[12px] font-medium text-on-surface-variant bg-surface-container px-2.5 py-1 rounded-full">
-                {replies.length} jawaban
+                {replies.length} informasi
               </span>
               <button
                 onClick={() => setDeleteConfirm(selectedMachine.id)}
@@ -395,42 +435,59 @@ export default function MachineDatabasePage() {
           {/* Add Reply Button + Form */}
           <div className="px-5 py-4 border-b border-outline-variant/30">
             {!showReplyForm ? (
-              <button
-                onClick={() => setShowReplyForm(true)}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-dashed border-outline-variant hover:border-primary text-on-surface-variant hover:text-primary transition-all text-[13px] font-medium"
-              >
-                <span className="material-symbols-outlined text-[18px]">add_circle</span>
-                Tambah Jawaban Baru
-              </button>
+              <div className="flex gap-3 flex-col sm:flex-row">
+                <button
+                  onClick={() => setShowReplyForm(true)}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-dashed border-outline-variant hover:border-primary text-on-surface-variant hover:text-primary transition-all text-[13px] font-medium"
+                >
+                  <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                  Tambah Manual
+                </button>
+                <input 
+                  type="file" 
+                  accept=".txt" 
+                  ref={fileInputRef} 
+                  style={{ display: 'none' }} 
+                  onChange={handleWAImport}
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={importingWA}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-dashed border-[#25D366] hover:bg-[#25D366]/5 text-[#25D366] transition-all text-[13px] font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                >
+                  <span className="material-symbols-outlined text-[18px]">forum</span>
+                  {importingWA ? 'Menganalisis Chat WA...' : 'Import dari Histori WhatsApp (.txt)'}
+                </button>
+              </div>
             ) : (
               <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="material-symbols-outlined text-primary text-[16px]">add_circle</span>
-                  <span className="text-[13px] font-semibold text-primary">Jawaban Baru</span>
+                  <span className="text-[13px] font-semibold text-primary">Informasi Baru</span>
                 </div>
                 <div>
-                  <label className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider mb-1 block">Pertanyaan Pelanggan</label>
+                  <label className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider mb-1 block">Judul Informasi / Kata Kunci</label>
                   <input
                     value={newQuestion}
                     onChange={e => setNewQuestion(e.target.value)}
-                    placeholder='Contoh: "Berapa harga mesin ini?"'
+                    placeholder='Contoh: "Alamat Kantor" atau "Dimensi Mesin"'
                     className="w-full px-3 py-2.5 rounded-lg border border-outline-variant text-[13px] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider mb-1 block">Template Jawaban</label>
+                  <label className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider mb-1 block">Detail Informasi</label>
                   <textarea
                     value={newAnswer}
                     onChange={e => setNewAnswer(e.target.value)}
                     rows={3}
-                    placeholder="Tulis template jawaban yang akan digunakan untuk merespon pelanggan..."
-                    className="w-full px-3 py-2.5 rounded-lg border border-outline-variant text-[13px] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 resize-none"
+                    placeholder="Tulis detail informasi yang lengkap (misal: alamat lengkap, spesifikasi, kebijakan, dll)..."
+                    className="w-full px-3 py-2.5 rounded-lg border border-outline-variant text-[13px] focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 resize-y min-h-[80px]"
                   />
                 </div>
                 <div className="flex gap-2 justify-end">
                   <button onClick={() => { setShowReplyForm(false); setNewQuestion(''); setNewAnswer('') }} className="px-3 py-1.5 text-[12px] font-medium text-on-surface-variant rounded-md hover:bg-surface-container transition-colors">Batal</button>
                   <button onClick={handleAddReply} disabled={!newQuestion.trim() || !newAnswer.trim() || addingReply} className="px-4 py-2 text-[12px] font-semibold bg-primary text-on-primary rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-all shadow-sm">
-                    {addingReply ? 'Menyimpan...' : 'Simpan Jawaban'}
+                    {addingReply ? 'Menyimpan...' : 'Simpan Informasi'}
                   </button>
                 </div>
               </motion.div>

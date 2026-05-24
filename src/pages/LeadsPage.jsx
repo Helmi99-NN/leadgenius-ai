@@ -9,7 +9,7 @@ import { getLeadsByCategory, getLeadDetail, deleteLead } from '../services/leads
 export default function LeadsPage() {
   const [viewMode, setViewMode] = useState('board')
   const [selectedLead, setSelectedLead] = useState(null)
-  const [filters, setFilters] = useState({ store: 'all', category: 'all', dateRange: '7d' })
+  const [filters, setFilters] = useState({ platform: 'all', category: 'all', dateRange: '7d' })
   const [leadsData, setLeadsData] = useState({ hot: [], warm: [], cold: [] })
   const [loading, setLoading] = useState(true)
 
@@ -77,11 +77,25 @@ export default function LeadsPage() {
     }
   }
 
-  // Format data dari Supabase ke format yang diharapkan komponen
+  // Fungsi bantu untuk memfilter data
+  const applyFilters = (leadArray) => {
+    return leadArray.filter((lead) => {
+      // 1. Filter Platform
+      if (filters.platform !== 'all' && lead.platform !== filters.platform) return false
+      
+      // 2. Filter Kategori (hanya berlaku di mode List View atau jika kita mau nge-hide column, 
+      // tapi untuk kanban lebih baik filter data di dalam kolomnya)
+      if (filters.category !== 'all' && lead.category !== filters.category) return false
+
+      return true
+    })
+  }
+
+  // Format dan filter data dari Supabase
   const formattedLeads = {
-    hot: leadsData.hot.map(formatLead),
-    warm: leadsData.warm.map(formatLead),
-    cold: leadsData.cold.map(formatLead),
+    hot: applyFilters(leadsData.hot).map(formatLead),
+    warm: applyFilters(leadsData.warm).map(formatLead),
+    cold: applyFilters(leadsData.cold).map(formatLead),
   }
 
   return (

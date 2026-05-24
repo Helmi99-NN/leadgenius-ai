@@ -6,8 +6,8 @@ import ContextExtraction from '../components/analyzer/ContextExtraction'
 import RecommendedReplies from '../components/analyzer/RecommendedReplies'
 import SmartSuggestion from '../components/analyzer/SmartSuggestion'
 import AnalyzerActionBar from '../components/analyzer/AnalyzerActionBar'
-import { analyzeChatScreenshot, fileToBase64 } from '../services/geminiService'
-import { supabase } from '../lib/supabase'
+import { analyzeChatScreenshot, fileToBase64, analyzeChatText } from '../services/geminiService'
+import { saveAnalyzedLead } from '../services/leadsService'
 
 export default function AnalyzerPage() {
   const [activeTab, setActiveTab] = useState('hard')
@@ -15,28 +15,38 @@ export default function AnalyzerPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [error, setError] = useState(null)
   const [uploadedFiles, setUploadedFiles] = useState([])
+  const [textInput, setTextInput] = useState('')
   const rawFilesRef = useRef([])
   const [extensionSource, setExtensionSource] = useState(null)
 
   const [savedLead, setSavedLead] = useState(null)
 
-  // ── CEK APAKAH DARI EXTENSION ──
+  // ── CEK PWA SHARE TARGET & EXTENSION ──
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    
+    // 1. PWA Share Target
+    const sharedText = params.get('text') || params.get('title')
+    if (sharedText) {
+      console.log('📱 Menerima data dari PWA Share Target:', sharedText)
+      setTextInput(sharedText)
+      // Bersihkan URL agar jika direfresh tidak memicu ulang
+      window.history.replaceState({}, document.title, window.location.pathname)
+      // Auto-analyze text
+      handleAnalyzeText(sharedText)
+      return
+    }
+
+    // 2. Extension
     function checkExtensionCapture() {
-      const raw = localStorage.getItem('extensionCapture')
-      if (!raw) return
+      const capture = window.__LEADGENIUS_CAPTURE__
+      if (!capture || !capture.dataUrl) return
 
       try {
-        const capture = JSON.parse(raw)
-        if (!capture.dataUrl) return
-
-        // Hapus dari localStorage agar tidak diproses ulang
-        localStorage.removeItem('extensionCapture')
-
+        window.__LEADGENIUS_CAPTURE__ = null
         console.log('📸 Menerima capture dari extension:', capture.platform?.name)
         setExtensionSource(capture.platform)
 
-        // Konversi base64 dataUrl ke File object
         const byteString = atob(capture.dataUrl.split(',')[1])
         const mimeString = capture.dataUrl.split(',')[0].split(':')[1].split(';')[0]
         const ab = new ArrayBuffer(byteString.length)
@@ -47,42 +57,46 @@ export default function AnalyzerPage() {
         const blob = new Blob([ab], { type: mimeString })
         const file = new File([blob], 'extension-capture.png', { type: mimeString })
 
-        // Set preview
         setUploadedFiles([{ id: Date.now(), file, preview: capture.dataUrl }])
         rawFilesRef.current = [file]
 
-        // Auto-trigger analisis
-        handleAnalyze([file], capture.platform)
+        handleAnalyzeImage([file], capture.platform)
       } catch (err) {
         console.error('Gagal proses capture extension:', err)
       }
     }
 
-    // Cek langsung saat mount
-    const params = new URLSearchParams(window.location.search)
     if (params.get('from') === 'extension') {
-      // Cek setiap 500ms selama 5 detik (tunggu inject dari extension)
       let attempts = 0
       const interval = setInterval(() => {
         attempts++
         checkExtensionCapture()
-        if (attempts >= 10 || localStorage.getItem('extensionCapture') === null && attempts > 2) {
+        if (attempts >= 10 || (window.__LEADGENIUS_CAPTURE__ === null && attempts > 2)) {
           clearInterval(interval)
         }
       }, 500)
-
       return () => clearInterval(interval)
     }
 
-    // Juga listen custom event dari extension
     function onExtensionCapture() {
       checkExtensionCapture()
     }
-    window.addEventListener('extensionCapture', onExtensionCapture)
-    return () => window.removeEventListener('extensionCapture', onExtensionCapture)
+    window.addEventListener('extensionCaptureReady', onExtensionCapture)
+    return () => window.removeEventListener('extensionCaptureReady', onExtensionCapture)
   }, [])
 
-  const handleAnalyze = async (files, platformOverride) => {
+  const processResultAndSave = async (result, platformOverride) => {
+    setAnalysisResult(result)
+    try {
+      const { lead, isUpdate } = await saveAnalyzedLead(result, platformOverride)
+      setSavedLead({ ...lead, isUpdate })
+      console.log(`✅ Data ${isUpdate ? 'diupdate' : 'tersimpan'} untuk: ${lead.company} (id: ${lead.id})`)
+    } catch (dbErr) {
+      console.warn('Gagal simpan ke database:', dbErr)
+    }
+  }
+
+  const handleAnalyzeImage = async (files, platformOverride) => {
     if (!files || files.length === 0) return
 
     rawFilesRef.current = files
@@ -92,183 +106,31 @@ export default function AnalyzerPage() {
     setSavedLead(null)
 
     try {
-      // Konversi file pertama ke base64
       const file = files[0]
       const { base64, mimeType } = await fileToBase64(file)
-
-      // Kirim ke Gemini untuk analisis
       const result = await analyzeChatScreenshot(base64, mimeType)
-      setAnalysisResult(result)
-
-      // ============================================
-      // SIMPAN KE SEMUA TABEL SUPABASE
-      // ============================================
-      try {
-        const customerName = result.customerName || 'Pelanggan Baru'
-        const initials = customerName
-          .split(' ')
-          .map((w) => w[0])
-          .join('')
-          .toUpperCase()
-          .substring(0, 2)
-
-        // ── 1. CEK DUPLIKAT: Apakah customer sudah ada? ──
-        const { data: existingLeads } = await supabase
-          .from('leads')
-          .select('id, company, score')
-          .ilike('company', customerName)
-          .limit(1)
-
-        let lead = null
-        let isUpdate = false
-
-        if (existingLeads && existingLeads.length > 0) {
-          // ── CUSTOMER SUDAH ADA → UPDATE ──
-          isUpdate = true
-          const existingId = existingLeads[0].id
-          console.log(`🔄 Customer "${customerName}" sudah ada (id: ${existingId}), update data...`)
-
-          const { data: updatedLead, error: updateErr } = await supabase
-            .from('leads')
-            .update({
-              score: result.score || existingLeads[0].score,
-              category: result.category || 'cold',
-              context: result.intent || result.product || '',
-              sentiment: result.sentiment || '',
-              last_message: result.transcript?.substring(0, 200) || '',
-              last_message_time: new Date().toISOString(),
-              needs_followup: true,
-              updated_at: new Date().toISOString(),
-              ...(platformOverride?.id ? { platform: platformOverride.id } : {}),
-            })
-            .eq('id', existingId)
-            .select()
-            .single()
-
-          if (updateErr) console.error('❌ Gagal update lead:', updateErr)
-          lead = updatedLead || existingLeads[0]
-        } else {
-          // ── CUSTOMER BARU → INSERT ──
-          console.log(`➕ Customer baru: "${customerName}"`)
-
-          const { data: newLead, error: leadErr } = await supabase.from('leads').insert({
-            company: customerName,
-            contact: customerName,
-            initials,
-            platform: platformOverride?.id || 'shopee',
-            score: result.score || 0,
-            category: result.category || 'cold',
-            context: result.intent || result.product || '',
-            sentiment: result.sentiment || '',
-            last_message: result.transcript?.substring(0, 200) || '',
-            last_message_time: new Date().toISOString(),
-            needs_followup: true,
-          }).select().single()
-
-          if (leadErr) console.error('❌ Gagal simpan lead:', leadErr)
-          lead = newLead
-        }
-
-        if (lead) {
-          setSavedLead({ ...lead, isUpdate })
-
-          // ── 2. Simpan transkrip sebagai chat message (selalu tambah baru) ──
-          if (result.transcript) {
-            const { error: chatErr } = await supabase.from('chat_messages').insert({
-              lead_id: lead.id,
-              sender: 'customer',
-              message: result.transcript,
-            })
-            if (chatErr) console.error('❌ Gagal simpan chat:', chatErr)
-          }
-
-          // ── 3. Follow-up: update jika sudah ada, insert jika belum ──
-          const followUpDate = new Date()
-          if (result.isCustomerLastMessage) {
-            // Jika pesan terakhir dari customer, balas saat itu juga (sekarang)
-            // Biarkan followUpDate = now
-          } else {
-            // Jika pesan terakhir dari kita, follow up 2 hari lagi
-            followUpDate.setDate(followUpDate.getDate() + 2)
-          }
-
-          if (isUpdate) {
-            // Update follow-up pending yang sudah ada
-            const { data: existingFU } = await supabase
-              .from('follow_ups')
-              .select('id')
-              .eq('lead_id', lead.id)
-              .eq('status', 'pending')
-              .limit(1)
-
-            if (existingFU && existingFU.length > 0) {
-              await supabase.from('follow_ups').update({
-                scheduled_at: followUpDate.toISOString(),
-                ai_draft: result.replies?.soft?.[0] || 'Halo, terima kasih sudah menghubungi kami!',
-                description: `Follow-up untuk ${customerName} — ${result.product || 'Produk'}`,
-              }).eq('id', existingFU[0].id)
-            } else {
-              await supabase.from('follow_ups').insert({
-                lead_id: lead.id,
-                status: 'pending',
-                scheduled_at: followUpDate.toISOString(),
-                ai_draft: result.replies?.soft?.[0] || 'Halo, terima kasih sudah menghubungi kami!',
-                description: `Follow-up untuk ${customerName} — ${result.product || 'Produk'}`,
-              })
-            }
-          } else {
-            const { error: fuErr } = await supabase.from('follow_ups').insert({
-              lead_id: lead.id,
-              status: 'pending',
-              scheduled_at: followUpDate.toISOString(),
-              ai_draft: result.replies?.soft?.[0] || 'Halo, terima kasih sudah menghubungi kami!',
-              description: `Follow-up untuk ${customerName} — ${result.product || 'Produk'}`,
-            })
-            if (fuErr) console.error('❌ Gagal simpan follow-up:', fuErr)
-          }
-
-          // ── 4. Notifikasi (selalu buat baru) ──
-          const { error: notifErr } = await supabase.from('notifications').insert({
-            type: isUpdate ? 'followup' : 'new-lead',
-            title: isUpdate
-              ? `Update: ${customerName} (Skor ${result.score})`
-              : `Prospek Baru: ${customerName}`,
-            description: `Skor ${result.score}/100 — ${result.category === 'hot' ? '🔥 Panas' : result.category === 'warm' ? '☀️ Hangat' : '❄️ Dingin'}. ${result.intent || result.product || ''}`,
-            lead_id: lead.id,
-            read: false,
-          })
-          if (notifErr) console.error('❌ Gagal simpan notifikasi:', notifErr)
-
-          // ── 5. Balasan AI: hapus yang lama, simpan yang baru ──
-          if (result.replies) {
-            // Hapus balasan lama untuk lead ini
-            if (isUpdate) {
-              await supabase.from('generated_replies').delete().eq('lead_id', lead.id)
-            }
-
-            const replyRows = []
-            for (const [style, texts] of Object.entries(result.replies)) {
-              texts.forEach((text) => {
-                replyRows.push({
-                  lead_id: lead.id,
-                  style,
-                  content: text,
-                })
-              })
-            }
-            if (replyRows.length > 0) {
-              const { error: replyErr } = await supabase.from('generated_replies').insert(replyRows)
-              if (replyErr) console.error('❌ Gagal simpan replies:', replyErr)
-            }
-          }
-
-          console.log(`✅ Data ${isUpdate ? 'diupdate' : 'tersimpan'} untuk: ${customerName} (id: ${lead.id})`)
-        }
-      } catch (dbErr) {
-        console.warn('Gagal simpan ke database:', dbErr)
-      }
+      await processResultAndSave(result, platformOverride)
     } catch (err) {
       console.error('Analisis gagal:', err)
+      setError(err.message)
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
+
+  const handleAnalyzeText = async (text) => {
+    if (!text.trim()) return
+
+    setIsAnalyzing(true)
+    setError(null)
+    setAnalysisResult(null)
+    setSavedLead(null)
+
+    try {
+      const result = await analyzeChatText(text)
+      await processResultAndSave(result, null)
+    } catch (err) {
+      console.error('Analisis teks gagal:', err)
       setError(err.message)
     } finally {
       setIsAnalyzing(false)
@@ -280,6 +142,7 @@ export default function AnalyzerPage() {
     setError(null)
     setUploadedFiles([])
     setSavedLead(null)
+    setTextInput('')
   }
 
   return (
@@ -384,12 +247,15 @@ export default function AnalyzerPage() {
         {/* Kolom Kiri: Upload & Pemrosesan */}
         <div className="xl:col-span-4 space-y-gutter flex flex-col">
           <UploadZone
-            onAnalyze={handleAnalyze}
+            onAnalyze={handleAnalyzeImage}
             isAnalyzing={isAnalyzing}
             hasResult={!!analysisResult}
             onReset={handleReset}
             uploadedFiles={uploadedFiles}
             setUploadedFiles={setUploadedFiles}
+            textInput={textInput}
+            setTextInput={setTextInput}
+            onAnalyzeText={handleAnalyzeText}
           />
           <IntelligenceReading
             result={analysisResult}

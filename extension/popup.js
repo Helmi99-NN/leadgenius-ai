@@ -7,10 +7,23 @@ var PLATFORM_ICONS = {
   whatsapp: '💬', tiktok: '🎵', other: '🌐', unknown: '❓'
 };
 
-var WEBAPP = 'https://leadgenius-ai-puce.vercel.app';
+var WEBAPP = 'http://localhost:5173'; // Default
 var currentPlatform = null;
 
 document.addEventListener('DOMContentLoaded', function() {
+  // Init Env Selector
+  chrome.storage.local.get(['targetEnv'], function(result) {
+    if (result.targetEnv) {
+      WEBAPP = result.targetEnv;
+      document.getElementById('env-select').value = WEBAPP;
+    }
+  });
+
+  document.getElementById('env-select').addEventListener('change', function(e) {
+    WEBAPP = e.target.value;
+    chrome.storage.local.set({ targetEnv: WEBAPP });
+  });
+
   detectPlatform();
   loadStats();
   loadLog();

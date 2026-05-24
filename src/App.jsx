@@ -9,6 +9,7 @@ import CompetitorPage from './pages/CompetitorPage'
 import MachineDatabasePage from './pages/MachineDatabasePage'
 import NotificationsPage from './pages/NotificationsPage'
 import SettingsPage from './pages/SettingsPage'
+import ShopeeProductsPage from './pages/ShopeeProductsPage'
 import AIAssistant from './components/ai/AIAssistant'
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
           <Route path="reply-generator" element={<ReplyGeneratorPage />} />
           <Route path="competitors" element={<CompetitorPage />} />
           <Route path="machine-database" element={<MachineDatabasePage />} />
+          <Route path="products" element={<ShopeeProductsPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>

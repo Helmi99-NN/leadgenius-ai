@@ -1,7 +1,31 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { supabase } from '../../lib/supabase'
 
 export default function TopBar({ onMenuToggle }) {
   const [searchFocused, setSearchFocused] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    async function fetchUnread() {
+      try {
+        const { count, error } = await supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true })
+          .eq('read', false)
+        if (!error) {
+          setUnreadCount(count || 0)
+        }
+      } catch (err) {
+        console.error('Gagal mengambil notifikasi:', err)
+      }
+    }
+    
+    fetchUnread()
+    
+    // Optional: Realtime subscription for notifications could be added here
+  }, [])
 
   return (
     <header className="sticky top-0 w-full z-40 bg-surface/80 backdrop-blur-xl border-b border-outline-variant flex justify-between items-center px-4 md:px-margin py-stack-sm">
@@ -36,9 +60,14 @@ export default function TopBar({ onMenuToggle }) {
       {/* Right Actions */}
       <div className="flex items-center gap-4 md:gap-gutter">
         {/* Notifications */}
-        <button className="text-on-surface-variant hover:text-primary transition-colors relative">
+        <button 
+          onClick={() => navigate('/notifications')}
+          className="text-on-surface-variant hover:text-primary transition-colors relative"
+        >
           <span className="material-symbols-outlined">notifications</span>
-          <span className="absolute top-0 right-0 w-2 h-2 bg-error rounded-full pulse-dot" />
+          {unreadCount > 0 && (
+            <span className="absolute top-0 right-0 w-2 h-2 bg-error rounded-full pulse-dot" />
+          )}
         </button>
 
         <div className="h-6 w-px bg-outline-variant hidden md:block" />

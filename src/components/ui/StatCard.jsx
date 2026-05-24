@@ -8,8 +8,9 @@ export default function StatCard({ icon, iconColor, iconBg, label, value, valueS
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -5, scale: 1.02 }}
       transition={{ duration: 0.4, delay }}
-      className={`glass-panel rounded-xl p-gutter relative overflow-hidden group hover:shadow-[0_0_15px_rgba(7,102,83,0.1)] transition-shadow ${
+      className={`glass-panel rounded-xl p-gutter relative overflow-hidden group hover:shadow-[0_8px_30px_rgba(7,102,83,0.15)] transition-all cursor-default ${
         hasGradientBorder ? 'ai-border-top' : ''
       }`}
     >

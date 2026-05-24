@@ -1,6 +1,8 @@
 import { NavLink, useLocation } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { getUnreadNotificationCount } from '../../services/notificationsService'
+import { supabase } from '../../lib/supabase'
 
 const navItems = [
   { path: '/dashboard', label: 'Dasbor', icon: 'dashboard', filled: true },
@@ -10,7 +12,8 @@ const navItems = [
   { path: '/reply-generator', label: 'Generator Balasan', icon: 'auto_awesome' },
   { path: '/competitors', label: 'Kompetitor', icon: 'monitoring' },
   { path: '/machine-database', label: 'Database Pengetahuan', icon: 'menu_book' },
-  { path: '/notifications', label: 'Notifikasi', icon: 'notifications', badge: 3 },
+  { path: '/products', label: 'Produk Shopee', icon: 'shopping_bag' },
+  { path: '/notifications', label: 'Notifikasi', icon: 'notifications', isNotification: true },
 ]
 
 const bottomNavItems = [
@@ -19,6 +22,28 @@ const bottomNavItems = [
 
 export default function Sidebar({ isOpen, onClose }) {
   const location = useLocation()
+  const [unreadCount, setUnreadCount] = useState(0)
+
+  useEffect(() => {
+    // Ambil jumlah notifikasi belum dibaca saat pertama dimuat
+    getUnreadNotificationCount().then(setUnreadCount).catch(console.error)
+
+    // Berlangganan perubahan di tabel notifications
+    const channel = supabase
+      .channel('notifications-sidebar')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'notifications' },
+        () => {
+          getUnreadNotificationCount().then(setUnreadCount).catch(console.error)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
 
   const linkClasses = (isActive) =>
     `flex items-center gap-stack-md px-stack-sm py-stack-sm font-label-md text-label-md rounded-lg active:scale-95 duration-200 transition-colors ${
@@ -66,9 +91,9 @@ export default function Sidebar({ isOpen, onClose }) {
                 {item.icon}
               </span>
               {item.label}
-              {item.badge && (
+              {item.isNotification && unreadCount > 0 && (
                 <span className="ml-auto bg-error text-on-error text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                  {item.badge}
+                  {unreadCount}
                 </span>
               )}
             </NavLink>

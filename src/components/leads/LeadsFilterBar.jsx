@@ -10,15 +10,17 @@ export default function LeadsFilterBar({ filters, onFilterChange }) {
     >
       <span className="material-symbols-outlined text-on-surface-variant">filter_list</span>
 
-      {/* Filter Toko */}
+      {/* Filter Platform */}
       <select
-        value={filters.store}
-        onChange={(e) => onFilterChange({ ...filters, store: e.target.value })}
+        value={filters.platform}
+        onChange={(e) => onFilterChange({ ...filters, platform: e.target.value })}
         className="bg-white border border-outline-variant font-label-md text-label-md rounded-lg py-1.5 px-3 text-on-surface min-w-[120px] focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all"
       >
-        <option value="all">Semua Toko</option>
-        <option value="alpha">Toko Alpha</option>
-        <option value="beta">Toko Beta</option>
+        <option value="all">Semua Platform</option>
+        <option value="shopee">Shopee</option>
+        <option value="facebook">Facebook</option>
+        <option value="whatsapp">WhatsApp</option>
+        <option value="instagram">Instagram</option>
       </select>
 
       {/* Filter Kategori */}
@@ -47,7 +49,10 @@ export default function LeadsFilterBar({ filters, onFilterChange }) {
       </div>
 
       {/* Hapus Filter */}
-      <button className="ml-auto text-primary font-label-sm text-label-sm hover:underline transition-all">
+      <button 
+        onClick={() => onFilterChange({ platform: 'all', category: 'all', dateRange: '7d' })}
+        className="ml-auto text-primary font-label-sm text-label-sm hover:underline transition-all"
+      >
         Hapus Filter
       </button>
     </motion.div>

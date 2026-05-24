@@ -29,3 +29,13 @@ export async function markAllRead() {
     .eq('read', false)
   if (error) throw error
 }
+
+export async function getUnreadNotificationCount() {
+  const { count, error } = await supabase
+    .from('notifications')
+    .select('*', { count: 'exact', head: true })
+    .eq('read', false)
+  
+  if (error) throw error
+  return count || 0
+}

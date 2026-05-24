@@ -10,6 +10,7 @@ export default function ReplyGeneratorPage() {
   const [toneValue, setToneValue] = useState(50)
   const [selectedLead, setSelectedLead] = useState('')
   const [customerMessage, setCustomerMessage] = useState('')
+  const [chatContext, setChatContext] = useState('')
   
   const [leads, setLeads] = useState([])
   const [isGenerating, setIsGenerating] = useState(false)
@@ -39,7 +40,7 @@ export default function ReplyGeneratorPage() {
         leadContext = { company: leads.find(l => l.id === selectedLead)?.label || 'Pelanggan', category: 'hot' } 
       }
 
-      const replies = await generateReplyFromContext(customerMessage, toneValue, leadContext)
+      const replies = await generateReplyFromContext(customerMessage, toneValue, leadContext, chatContext)
       // Transform Gemini's array format to the format expected by ReplyOutputPanel
       const formattedReplies = {}
       for (const [key, arr] of Object.entries(replies)) {
@@ -68,6 +69,8 @@ export default function ReplyGeneratorPage() {
             onLeadChange={setSelectedLead}
             customerMessage={customerMessage}
             onMessageChange={setCustomerMessage}
+            chatContext={chatContext}
+            onChatContextChange={setChatContext}
             toneValue={toneValue}
             onToneChange={setToneValue}
             onGenerate={handleGenerate}

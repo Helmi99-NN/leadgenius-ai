@@ -6,6 +6,8 @@ export default function ReplyContextPanel({
   onLeadChange,
   customerMessage,
   onMessageChange,
+  chatContext,
+  onChatContextChange,
   toneValue,
   onToneChange,
   onGenerate,
@@ -62,8 +64,21 @@ export default function ReplyContextPanel({
           <textarea
             value={customerMessage}
             onChange={(e) => onMessageChange(e.target.value)}
-            className="w-full h-32 bg-surface-bright border border-outline-variant rounded-md p-3 font-body-md text-body-md text-on-background focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none placeholder-outline"
+            className="w-full h-24 bg-surface-bright border border-outline-variant rounded-md p-3 font-body-md text-body-md text-on-background focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none placeholder-outline"
             placeholder="Tempelkan pesan pelanggan di sini..."
+          />
+        </div>
+
+        {/* Penjelasan Konteks */}
+        <div className="mb-4">
+          <label className="block font-label-sm text-label-sm text-on-surface-variant mb-2">
+            Penjelasan Konteks (Opsional)
+          </label>
+          <textarea
+            value={chatContext}
+            onChange={(e) => onChatContextChange(e.target.value)}
+            className="w-full h-20 bg-surface-bright border border-outline-variant rounded-md p-3 font-body-md text-body-md text-on-background focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none placeholder-outline text-[13px]"
+            placeholder="Contoh: 'Ini pelanggan lama, minta diskon', atau 'Ini follow up ke-3'..."
           />
         </div>
 

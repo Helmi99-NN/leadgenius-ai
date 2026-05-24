@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { useSettings } from '../hooks/useSettings'
 
 const sections = [
   { id: 'account', label: 'Akun', icon: 'person' },
@@ -12,6 +13,7 @@ const sections = [
 export default function SettingsPage() {
   const [activeSection, setActiveSection] = useState('account')
   const [saved, setSaved] = useState(false)
+  const { settings, updateSetting } = useSettings()
 
   const handleSave = () => {
     setSaved(true)
@@ -75,8 +77,8 @@ export default function SettingsPage() {
         >
           {activeSection === 'account' && <AccountSettings />}
           {activeSection === 'stores' && <StoreSettings />}
-          {activeSection === 'ai' && <AISettings />}
-          {activeSection === 'notifications' && <NotificationSettings />}
+          {activeSection === 'ai' && <AISettings settings={settings} updateSetting={updateSetting} />}
+          {activeSection === 'notifications' && <NotificationSettings settings={settings} updateSetting={updateSetting} />}
           {activeSection === 'api' && <APISettings />}
 
           {/* Tombol Simpan */}
@@ -132,20 +134,21 @@ function FieldGroup({ label, children, hint }) {
   )
 }
 
-function InputField({ type = 'text', placeholder, defaultValue, ...props }) {
+function InputField({ type = 'text', placeholder, defaultValue, value, onChange, ...props }) {
   return (
     <input
       type={type}
       placeholder={placeholder}
       defaultValue={defaultValue}
+      value={value}
+      onChange={onChange}
       className="w-full bg-surface-bright border border-outline-variant rounded-md py-2 px-3 font-body-md text-body-md text-on-background focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
       {...props}
     />
   )
 }
 
-function ToggleRow({ label, description, defaultChecked = false }) {
-  const [enabled, setEnabled] = useState(defaultChecked)
+function ToggleRow({ label, description, checked, onChange }) {
   return (
     <div className="flex items-center justify-between py-3 border-b border-outline-variant/50 last:border-0">
       <div>
@@ -155,14 +158,14 @@ function ToggleRow({ label, description, defaultChecked = false }) {
         )}
       </div>
       <button
-        onClick={() => setEnabled(!enabled)}
+        onClick={() => onChange(!checked)}
         className={`w-11 h-6 rounded-full transition-colors relative ${
-          enabled ? 'bg-primary' : 'bg-surface-container-highest'
+          checked ? 'bg-primary' : 'bg-surface-container-highest'
         }`}
       >
         <div
           className={`w-5 h-5 rounded-full bg-white shadow absolute top-0.5 transition-transform ${
-            enabled ? 'translate-x-[22px]' : 'translate-x-0.5'
+            checked ? 'translate-x-[22px]' : 'translate-x-0.5'
           }`}
         />
       </button>
@@ -244,12 +247,16 @@ function StoreSettings() {
 }
 
 /* --- AI Config --- */
-function AISettings() {
+function AISettings({ settings, updateSetting }) {
   return (
     <SectionCard title="Konfigurasi AI" icon="smart_toy">
       <FieldGroup label="Model AI" hint="Model yang digunakan untuk analisis chat dan generate balasan.">
         <div className="relative">
-          <select className="w-full bg-surface-bright border border-outline-variant rounded-md py-2 pl-3 pr-10 font-body-md text-body-md text-on-background appearance-none focus:outline-none focus:border-primary">
+          <select 
+            value={settings.aiModel}
+            onChange={(e) => updateSetting('aiModel', e.target.value)}
+            className="w-full bg-surface-bright border border-outline-variant rounded-md py-2 pl-3 pr-10 font-body-md text-body-md text-on-background appearance-none focus:outline-none focus:border-primary"
+          >
             <option>Gemini 2.0 Flash</option>
             <option>Gemini 2.5 Pro</option>
             <option>Gemini 1.5 Pro</option>
@@ -260,7 +267,11 @@ function AISettings() {
 
       <FieldGroup label="Bahasa Default Balasan">
         <div className="relative">
-          <select className="w-full bg-surface-bright border border-outline-variant rounded-md py-2 pl-3 pr-10 font-body-md text-body-md text-on-background appearance-none focus:outline-none focus:border-primary">
+          <select 
+            value={settings.aiLanguage}
+            onChange={(e) => updateSetting('aiLanguage', e.target.value)}
+            className="w-full bg-surface-bright border border-outline-variant rounded-md py-2 pl-3 pr-10 font-body-md text-body-md text-on-background appearance-none focus:outline-none focus:border-primary"
+          >
             <option>Bahasa Indonesia</option>
             <option>English</option>
             <option>Bahasa Indonesia + English (Campur)</option>
@@ -271,7 +282,11 @@ function AISettings() {
 
       <FieldGroup label="Gaya Balasan Default">
         <div className="relative">
-          <select className="w-full bg-surface-bright border border-outline-variant rounded-md py-2 pl-3 pr-10 font-body-md text-body-md text-on-background appearance-none focus:outline-none focus:border-primary">
+          <select 
+            value={settings.aiStyle}
+            onChange={(e) => updateSetting('aiStyle', e.target.value)}
+            className="w-full bg-surface-bright border border-outline-variant rounded-md py-2 pl-3 pr-10 font-body-md text-body-md text-on-background appearance-none focus:outline-none focus:border-primary"
+          >
             <option>Penjualan Halus (Soft Selling)</option>
             <option>Penjualan Agresif (Hard Selling)</option>
             <option>Otoritas</option>
@@ -282,23 +297,63 @@ function AISettings() {
       </FieldGroup>
 
       <div className="mt-stack-md">
-        <ToggleRow label="Auto-Analisis Chat Masuk" description="Analisis otomatis setiap chat baru yang masuk." defaultChecked={true} />
-        <ToggleRow label="Saran Balasan Otomatis" description="Tampilkan saran balasan di notifikasi." defaultChecked={true} />
-        <ToggleRow label="Deteksi Kompetitor Otomatis" description="AI akan mendeteksi jika pelanggan menyebut kompetitor." defaultChecked={false} />
+        <ToggleRow 
+          label="Auto-Analisis Chat Masuk" 
+          description="Analisis otomatis setiap chat baru yang masuk." 
+          checked={settings.autoAnalyze} 
+          onChange={(val) => updateSetting('autoAnalyze', val)} 
+        />
+        <ToggleRow 
+          label="Saran Balasan Otomatis" 
+          description="Tampilkan saran balasan di notifikasi." 
+          checked={settings.autoSuggest} 
+          onChange={(val) => updateSetting('autoSuggest', val)} 
+        />
+        <ToggleRow 
+          label="Deteksi Kompetitor Otomatis" 
+          description="AI akan mendeteksi jika pelanggan menyebut kompetitor." 
+          checked={settings.autoCompetitor} 
+          onChange={(val) => updateSetting('autoCompetitor', val)} 
+        />
       </div>
     </SectionCard>
   )
 }
 
 /* --- Notification Prefs --- */
-function NotificationSettings() {
+function NotificationSettings({ settings, updateSetting }) {
   return (
     <SectionCard title="Preferensi Notifikasi" icon="notifications">
-      <ToggleRow label="Prospek Baru" description="Dapatkan notifikasi saat ada lead baru masuk." defaultChecked={true} />
-      <ToggleRow label="Pengingat Tindak Lanjut" description="Ingatkan jadwal follow-up yang mendekat." defaultChecked={true} />
-      <ToggleRow label="Peringatan Kompetitor" description="Notifikasi saat kompetitor mengubah harga." defaultChecked={true} />
-      <ToggleRow label="Laporan Harian" description="Kirim ringkasan performa harian via email." defaultChecked={false} />
-      <ToggleRow label="Suara Notifikasi" description="Aktifkan suara untuk notifikasi penting." defaultChecked={false} />
+      <ToggleRow 
+        label="Prospek Baru" 
+        description="Dapatkan notifikasi saat ada lead baru masuk." 
+        checked={settings.notifNewLead} 
+        onChange={(val) => updateSetting('notifNewLead', val)} 
+      />
+      <ToggleRow 
+        label="Pengingat Tindak Lanjut" 
+        description="Ingatkan jadwal follow-up yang mendekat." 
+        checked={settings.notifFollowUp} 
+        onChange={(val) => updateSetting('notifFollowUp', val)} 
+      />
+      <ToggleRow 
+        label="Peringatan Kompetitor" 
+        description="Notifikasi saat kompetitor mengubah harga." 
+        checked={settings.notifCompetitor} 
+        onChange={(val) => updateSetting('notifCompetitor', val)} 
+      />
+      <ToggleRow 
+        label="Laporan Harian" 
+        description="Kirim ringkasan performa harian via email." 
+        checked={settings.notifDaily} 
+        onChange={(val) => updateSetting('notifDaily', val)} 
+      />
+      <ToggleRow 
+        label="Suara Notifikasi" 
+        description="Aktifkan suara untuk notifikasi penting." 
+        checked={settings.notifSound} 
+        onChange={(val) => updateSetting('notifSound', val)} 
+      />
     </SectionCard>
   )
 }

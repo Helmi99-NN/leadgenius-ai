@@ -1,8 +1,17 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export default function LeadDetailPanel({ lead, onClose }) {
   const [copied, setCopied] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
   if (!lead) return null
 
   return (
@@ -20,11 +29,11 @@ export default function LeadDetailPanel({ lead, onClose }) {
 
           {/* Panel */}
           <motion.div
-            initial={{ x: 500, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 500, opacity: 0 }}
+            initial={isMobile ? { y: '100%', opacity: 0 } : { x: 500, opacity: 0 }}
+            animate={isMobile ? { y: 0, opacity: 1 } : { x: 0, opacity: 1 }}
+            exit={isMobile ? { y: '100%', opacity: 0 } : { x: 500, opacity: 0 }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed right-0 top-0 h-full w-full sm:w-[450px] bg-surface border-l border-outline-variant z-50 shadow-[-10px_0_30px_rgba(0,0,0,0.1)] flex flex-col"
+            className="fixed bottom-0 sm:right-0 sm:top-0 w-full sm:w-[450px] h-[90vh] sm:h-full bg-surface border-t sm:border-t-0 sm:border-l border-outline-variant z-50 shadow-[0_-10px_30px_rgba(0,0,0,0.1)] sm:shadow-[-10px_0_30px_rgba(0,0,0,0.1)] flex flex-col rounded-t-3xl sm:rounded-none"
           >
             {/* Header Panel */}
             <div className="px-gutter py-stack-md border-b border-outline-variant flex justify-between items-center bg-surface-container-high/50 shrink-0">

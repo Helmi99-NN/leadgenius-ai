@@ -94,30 +94,32 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
           chrome.action.setBadgeBackgroundColor({ color: platform.color });
         });
 
-        // Buka tab analyzer di BACKGROUND (GANTI KE VERCEL)
-        var analyzerUrl = 'https://leadgenius-ai-puce.vercel.app/analyzer?from=extension&platform=' + platform.id + '&t=' + Date.now();
-        
-        chrome.tabs.create({ url: analyzerUrl, active: true }, function(newTab) {
-          // Tunggu tab selesai load, lalu inject data ke localStorage
-          chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
-            if (tabId === newTab.id && info.status === 'complete') {
-              chrome.tabs.onUpdated.removeListener(listener);
-              
-              // Inject dataUrl ke localStorage halaman web
-              chrome.scripting.executeScript({
-                target: { tabId: newTab.id },
-                func: function(data, plat) {
-                  window.localStorage.setItem('extensionCapture', JSON.stringify({
-                    dataUrl: data,
-                    platform: plat,
-                    timestamp: new Date().toISOString()
-                  }));
-                  // Trigger custom event agar React bisa detect
-                  window.dispatchEvent(new CustomEvent('extensionCapture', { detail: { ready: true } }));
-                },
-                args: [dataUrl, platform]
-              });
-            }
+        chrome.storage.local.get(['targetEnv'], function(res) {
+          var webApp = res.targetEnv || 'http://localhost:5173';
+          var analyzerUrl = webApp + '/analyzer?from=extension&platform=' + platform.id + '&t=' + Date.now();
+          
+          chrome.tabs.create({ url: analyzerUrl, active: true }, function(newTab) {
+            // Tunggu tab selesai load, lalu inject data ke memory window global (bukan localStorage)
+            chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
+              if (tabId === newTab.id && info.status === 'complete') {
+                chrome.tabs.onUpdated.removeListener(listener);
+                
+                // Inject dataUrl ke window variable
+                chrome.scripting.executeScript({
+                  target: { tabId: newTab.id },
+                  func: function(data, plat) {
+                    window.__LEADGENIUS_CAPTURE__ = {
+                      dataUrl: data,
+                      platform: plat,
+                      timestamp: new Date().toISOString()
+                    };
+                    // Trigger custom event agar React bisa detect
+                    window.dispatchEvent(new CustomEvent('extensionCaptureReady', { detail: { ready: true } }));
+                  },
+                  args: [dataUrl, platform]
+                });
+              }
+            });
           });
         });
 
@@ -139,7 +141,10 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
   }
 
   if (message.type === 'OPEN_DASHBOARD') {
-    chrome.tabs.create({ url: 'https://leadgenius-ai-puce.vercel.app/analyzer' });
+    chrome.storage.local.get(['targetEnv'], function(res) {
+      var webApp = res.targetEnv || 'http://localhost:5173';
+      chrome.tabs.create({ url: webApp + '/analyzer' });
+    });
   }
 
   return false;

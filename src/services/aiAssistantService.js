@@ -75,24 +75,13 @@ PENTING: SELALU kembalikan JSON valid. Jangan tambahkan teks di luar JSON.`
 
 // Kirim pesan ke Gemini dan dapatkan respons + action
 export async function sendMessage(userMessage, chatHistory = []) {
-  // Ambil ringkasan data terkini untuk konteks
-  const { data: recentLeads } = await supabase
-    .from('leads')
-    .select('id, company, platform, score, category, contact')
-    .order('updated_at', { ascending: false })
-    .limit(20)
-
-  const dataContext = recentLeads && recentLeads.length > 0
-    ? `\n\nDATA PROSPEK TERKINI (${recentLeads.length} terakhir):\n${recentLeads.map(l => `- ID:${l.id} | ${l.company} | Platform: ${l.platform} | Skor: ${l.score} | Kategori: ${l.category}`).join('\n')}`
-    : '\n\nBelum ada data prospek di database.'
-
   // Bangun conversation history untuk Gemini
   const contents = []
 
   // System instruction sebagai pesan pertama
   contents.push({
     role: 'user',
-    parts: [{ text: SYSTEM_PROMPT + dataContext }],
+    parts: [{ text: SYSTEM_PROMPT }],
   })
   contents.push({
     role: 'model',
@@ -161,6 +150,13 @@ export async function sendMessage(userMessage, chatHistory = []) {
 // Eksekusi action dari AI response
 export async function executeAction(action) {
   if (!action) return null
+  
+  // WHITELIST TABEL: Cegah AI mengakses tabel sensitif (users, auth, dll)
+  const ALLOWED_TABLES = ['leads', 'follow_ups', 'chat_messages']
+  if (action.table && !ALLOWED_TABLES.includes(action.table)) {
+    console.error('⚠️ AI mencoba mengakses tabel terlarang:', action.table)
+    return { success: false, error: 'Akses ditolak: AI dilarang mengakses tabel ' + action.table }
+  }
 
   try {
     switch (action.type) {
