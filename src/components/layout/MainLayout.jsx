@@ -4,9 +4,13 @@ import { motion } from 'framer-motion'
 import Sidebar from './Sidebar'
 import TopBar from './TopBar'
 import BottomNav from './BottomNav'
+import { useGlobalChatListener } from '../../hooks/useGlobalChatListener'
 
 export default function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  
+  // Aktifkan pendengar chat global di background
+  useGlobalChatListener()
 
   return (
     <div className="text-on-background font-body-md min-h-screen flex pb-20 md:pb-0">

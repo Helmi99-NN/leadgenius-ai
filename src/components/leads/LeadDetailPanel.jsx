@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 
 export default function LeadDetailPanel({ lead, onClose }) {
   const [copied, setCopied] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 640)
@@ -69,7 +71,10 @@ export default function LeadDetailPanel({ lead, onClose }) {
                   <span className="material-symbols-outlined text-[18px]">mail</span>
                   Email
                 </button>
-                <button className="flex-1 bg-primary text-on-primary font-label-md text-label-md py-2 rounded-lg hover:opacity-90 transition-opacity flex justify-center items-center gap-2 border border-black/10">
+                <button 
+                  onClick={() => navigate('/reply-generator', { state: { leadId: lead.id } })}
+                  className="flex-1 bg-primary text-on-primary font-label-md text-label-md py-2 rounded-lg hover:opacity-90 transition-opacity flex justify-center items-center gap-2 border border-black/10"
+                >
                   <span className="material-symbols-outlined text-[18px]">smart_toy</span>
                   Buat Balasan
                 </button>

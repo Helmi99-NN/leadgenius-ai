@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220">
+  <!-- Letter A - Coral/Salmon -->
+  <path d="M100 10 L55 170 L75 170 L85 140 L115 140 L125 170 L145 170 L100 10Z M90 120 L100 85 L110 120 Z" fill="#E8845C"/>
+  <!-- Swoosh - Navy -->
+  <path d="M52 145 Q75 125 110 130 Q130 133 140 145 Q120 125 95 122 Q70 120 52 145Z" fill="#2E2067"/>
+  <!-- Text CV.Asianindo - White for dark background -->
+  <text x="100" y="195" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="24" fill="#FFFFFF">CV.Asianindo</text>
+  <!-- Website - White -->
+  <text x="100" y="215" text-anchor="middle" font-family="Arial, sans-serif" font-weight="400" font-size="12" fill="#FFFFFF">www.asianindo.com</text>
+</svg>

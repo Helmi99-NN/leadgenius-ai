@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import LeadBadge from '../ui/LeadBadge'
 import ScoreGauge from '../ui/ScoreGauge'
@@ -19,6 +20,7 @@ function getTimeAgo(dateStr) {
 }
 
 export default function RecentLeadsTable() {
+  const navigate = useNavigate()
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -97,7 +99,8 @@ export default function RecentLeadsTable() {
               {leads.map((lead) => (
                 <tr
                   key={lead.id}
-                  className="hover:bg-surface-container-highest/30 transition-colors group"
+                  onClick={() => navigate('/leads', { state: { openLeadId: lead.id } })}
+                  className="hover:bg-surface-container-highest/30 transition-colors group cursor-pointer"
                 >
                   {/* Contact */}
                   <td className="p-stack-md">

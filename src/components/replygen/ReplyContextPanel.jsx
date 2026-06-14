@@ -64,8 +64,16 @@ export default function ReplyContextPanel({
           <textarea
             value={customerMessage}
             onChange={(e) => onMessageChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (!isGenerating && customerMessage.trim()) {
+                  onGenerate();
+                }
+              }
+            }}
             className="w-full h-24 bg-surface-bright border border-outline-variant rounded-md p-3 font-body-md text-body-md text-on-background focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none placeholder-outline"
-            placeholder="Tempelkan pesan pelanggan di sini..."
+            placeholder="Tempelkan pesan pelanggan di sini... (Tekan Enter untuk generate)"
           />
         </div>
 

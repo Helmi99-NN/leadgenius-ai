@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { supabase } from '../../lib/supabase'
 
 const tabs = [
   { id: 'hard', label: 'Penjualan Agresif' },
@@ -8,64 +9,7 @@ const tabs = [
   { id: 'scarcity', label: 'Kelangkaan' },
 ]
 
-const repliesByTab = {
-  hard: [
-    {
-      text: 'Halo Budi! Kebetulan banget stok Macbook ini tinggal sisa 2 unit lagi lho. Kalo kamu transfer hari ini sebelum jam 3 sore, aku bisa kasih free ongkir ke seluruh Indonesia. Jangan sampai kehabisan ya!',
-      highlighted: true,
-    },
-    {
-      text: 'Halo Budi! Ini best deal banget. Harga promo ini cuma berlaku sampai besok aja. Yuk langsung checkout sekarang sebelum harganya naik lagi. Mumpung barangnya masih ready nih!',
-      highlighted: false,
-    },
-    {
-      text: 'Halo Budi! Langsung deal ya. Transfer sekarang, barangnya langsung kita proses kirim hari ini juga pake kilat. Spesifikasi gahar harga bersahabat, kapan lagi coba?',
-      highlighted: false,
-    },
-  ],
-  soft: [
-    {
-      text: 'Halo Budi! Terima kasih sudah tertarik dengan Macbook kami. Kalau ada pertanyaan tentang spesifikasi atau perbandingan model, saya siap bantu. Kamu bisa cek reviewnya juga dari pelanggan kami yang sudah puas ya.',
-      highlighted: true,
-    },
-    {
-      text: 'Hai Budi, Macbook ini memang pilihan tepat untuk kebutuhan kerja dan kreativitas. Kalau mau, saya bisa kirim detail perbandingan dengan model lain biar kamu makin yakin. Santai aja, kapanpun siap order tinggal kabari!',
-      highlighted: false,
-    },
-    {
-      text: 'Halo Budi! Saya paham milih gadget itu perlu pertimbangan. Aku kasih info lengkap ya: garansi resmi 1 tahun, bisa COD, dan ada program cicilan 0% juga. Kalau ada yang mau ditanya, langsung chat aja ya!',
-      highlighted: false,
-    },
-  ],
-  authority: [
-    {
-      text: 'Halo Budi! Sebagai seller bersertifikat Apple Authorized Reseller, kami menjamin keaslian dan garansi resmi 100%. Sudah 5.000+ unit Macbook terjual dengan rating 4.9/5. Anda berada di tangan yang tepat!',
-      highlighted: true,
-    },
-    {
-      text: 'Hai Budi, toko kami sudah berpengalaman 8 tahun di bidang Apple products dan merupakan Top Seller Platinum. Setiap unit dilengkapi sertifikat keaslian dan garansi internasional. Kualitas kami sudah teruji.',
-      highlighted: false,
-    },
-    {
-      text: 'Halo Budi! Unit Macbook kami langsung dari distributor resmi. Kami sudah dipercaya oleh 200+ perusahaan untuk pengadaan IT mereka. Dijamin produk ori, packaging rapi, dan pengiriman aman bergaransi.',
-      highlighted: false,
-    },
-  ],
-  scarcity: [
-    {
-      text: 'Halo Budi! URGENT: Stok Macbook model ini tinggal 2 unit terakhir di seluruh Indonesia. Harga ini tidak akan bertahan lama karena ada kenaikan harga dari distributor minggu depan. Amankan sekarang!',
-      highlighted: true,
-    },
-    {
-      text: 'Hai Budi! FYI, model ini sudah dihentikan produksinya dan stok kami adalah batch terakhir. Sudah ada 5 orang yang nanya hari ini. Siapa cepat dia dapat ya. Mau saya hold-kan 1 unit untuk kamu?',
-      highlighted: false,
-    },
-    {
-      text: 'Halo Budi! Flash Sale 24 jam terakhir! Diskon 15% untuk Macbook ini hanya berlaku hari ini sampai jam 23:59. Setelah itu harga kembali normal. Jangan lewatkan kesempatan langka ini!',
-      highlighted: false,
-    },
-  ],
-}
+const repliesByTab = null
 
 const tabLabels = {
   hard: 'Hard Selling',
@@ -74,7 +18,7 @@ const tabLabels = {
   scarcity: 'Kelangkaan',
 }
 
-export default function ReplyOutputPanel({ activeTab, onTabChange, replies, isGenerating }) {
+export default function ReplyOutputPanel({ activeTab, onTabChange, replies, isGenerating, activeChatId, onRegenerate }) {
   const [copiedIdx, setCopiedIdx] = useState(null)
 
   const handleCopy = (text, idx) => {
@@ -83,7 +27,37 @@ export default function ReplyOutputPanel({ activeTab, onTabChange, replies, isGe
     setTimeout(() => setCopiedIdx(null), 2000)
   }
 
-  const currentReplies = replies?.[activeTab] || repliesByTab[activeTab] || repliesByTab.hard
+  const [sendingIdx, setSendingIdx] = useState(null)
+
+  const handleApproveAndSend = async (text, idx) => {
+    if (!activeChatId) {
+      alert("Fitur ini hanya aktif untuk chat yang masuk otomatis dari Shopee Extension.");
+      return;
+    }
+    
+    setSendingIdx(idx)
+    try {
+      const { error } = await supabase
+        .from('incoming_chats')
+        .update({ 
+          status: 'approved',
+          reply_text: text,
+          is_sent: false
+        })
+        .eq('id', activeChatId)
+
+      if (error) throw error
+      
+      alert("Balasan di-Approve! Ekstensi sedang mengetik dan mengirimkannya ke Shopee...")
+    } catch (err) {
+      console.error(err)
+      alert("Gagal Approve: " + err.message)
+    } finally {
+      setTimeout(() => setSendingIdx(null), 1500)
+    }
+  }
+
+  const currentReplies = replies?.[activeTab] || null
 
   return (
     <motion.div
@@ -114,8 +88,14 @@ export default function ReplyOutputPanel({ activeTab, onTabChange, replies, isGe
         <h3 className="font-headline-md text-headline-md font-bold text-on-background">
           Hasil ({tabLabels[activeTab]})
         </h3>
-        <button className="text-on-surface-variant font-label-sm text-label-sm flex items-center gap-1 hover:text-primary transition-colors">
-          <span className="material-symbols-outlined text-sm">refresh</span>
+        <button 
+          onClick={onRegenerate}
+          disabled={isGenerating}
+          className={`font-label-sm text-label-sm flex items-center gap-1 transition-colors ${
+            isGenerating ? 'text-outline opacity-50 cursor-not-allowed' : 'text-on-surface-variant hover:text-primary'
+          }`}
+        >
+          <span className={`material-symbols-outlined text-sm ${isGenerating ? 'animate-spin' : ''}`}>refresh</span>
           Regenerate
         </button>
       </div>
@@ -141,7 +121,7 @@ export default function ReplyOutputPanel({ activeTab, onTabChange, replies, isGe
               </div>
             ))}
           </motion.div>
-        ) : (
+        ) : currentReplies ? (
           <motion.div
             key={activeTab}
             initial={{ opacity: 0, x: 12 }}
@@ -178,19 +158,42 @@ export default function ReplyOutputPanel({ activeTab, onTabChange, replies, isGe
                   onClick={() => handleCopy(reply.text, idx)}
                   className={`px-3 py-1.5 font-label-sm text-label-sm rounded flex items-center gap-1 transition-colors ${
                     copiedIdx === idx
-                      ? 'bg-primary text-on-primary'
-                      : 'bg-secondary-fixed text-on-secondary-fixed hover:bg-secondary-container'
+                      ? 'bg-secondary-fixed text-on-secondary-fixed'
+                      : 'bg-surface-variant text-on-surface-variant hover:bg-surface-container-high'
                   }`}
                 >
                   <span className="material-symbols-outlined text-sm">
                     {copiedIdx === idx ? 'check' : 'content_copy'}
                   </span>
-                  {copiedIdx === idx ? 'Tersalin!' : 'Salin'}
+                  {copiedIdx === idx ? 'Tersalin' : 'Salin'}
+                </button>
+                <button
+                  onClick={() => handleApproveAndSend(reply.text, idx)}
+                  disabled={sendingIdx !== null}
+                  className={`px-4 py-1.5 font-label-sm text-label-sm rounded-lg flex items-center gap-2 transition-colors ${
+                    sendingIdx === idx
+                      ? 'bg-primary/70 text-on-primary'
+                      : 'bg-primary text-on-primary hover:bg-primary/90 shadow-sm'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">
+                    {sendingIdx === idx ? 'hourglass_top' : 'send'}
+                  </span>
+                  {sendingIdx === idx ? 'Mengirim...' : 'Approve & Send'}
                 </button>
               </div>
             </div>
           ))}
         </motion.div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex-1 flex flex-col items-center justify-center py-12 text-on-surface-variant opacity-70"
+          >
+            <span className="material-symbols-outlined text-[48px] mb-3">quick_phrases</span>
+            <p className="font-body-md text-body-md text-center max-w-xs">Belum ada balasan yang dibuat.<br/>Silakan masukkan pesan pelanggan dan klik "Buat Balasan".</p>
+          </motion.div>
         )}
       </AnimatePresence>
 

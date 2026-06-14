@@ -3,6 +3,7 @@
 // Analisis screenshot chat dengan Gemini AI
 // ============================================
 import { findRelevantReplies } from './machineService'
+import shopeeProducts from '../data/shopee_products.json'
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY
 
@@ -33,10 +34,112 @@ function sleep(ms) {
  * @param {string} mimeType - MIME type gambar (image/jpeg, image/png, dll)
  * @returns {Promise<Object>} Hasil analisis AI
  */
-export async function analyzeChatScreenshot(base64Image, mimeType = 'image/jpeg') {
-  const prompt = `Kamu adalah AI Sales Intelligence Analyst untuk marketplace (Shopee, Tokopedia, dll).
+// ── HELPER: Cari produk relevan dari database Shopee ──
+// Menggunakan skor relevansi berbasis kata kunci inti (bukan filter mentah)
+function searchShopeeProducts(queryText) {
+  // Kata-kata umum yang TIDAK BERMAKNA untuk pencarian mesin (stop words)
+  const stopWords = ['berapa', 'harga', 'yang', 'ada', 'bisa', 'untuk', 'ini', 'itu', 'apa',
+    'mau', 'minta', 'dong', 'min', 'kak', 'bang', 'mas', 'pak', 'halo', 'hai', 'saya',
+    'apakah', 'bagaimana', 'gimana', 'tolong', 'kasih', 'tau', 'tahu', 'dengan',
+    'dan', 'atau', 'dari', 'tidak', 'juga', 'sudah', 'belum', 'lagi', 'per', 'nya']
 
-Analisis screenshot chat ini dan berikan respons dalam format JSON yang VALID (tanpa markdown code block, langsung JSON saja).
+  // Pecah query menjadi kata kunci bermakna (buang stop words)
+  const rawWords = queryText.toLowerCase().replace(/[^\w\s,./]/g, '').split(/\s+/)
+  const keywords = rawWords.filter(w => w.length > 1 && !stopWords.includes(w))
+
+  if (keywords.length === 0) return []
+
+  // Hitung skor relevansi setiap produk
+  const scored = shopeeProducts.map(p => {
+    const judulLower = (p.judul || '').toLowerCase()
+    const deskLower = (p.deskripsi || '').toLowerCase()
+    let score = 0
+
+    for (const kw of keywords) {
+      // Cocok di JUDUL = bobot tinggi (3 poin)
+      if (judulLower.includes(kw)) score += 3
+      // Cocok di DESKRIPSI = bobot sedang (1 poin)
+      if (deskLower.includes(kw)) score += 1
+    }
+    return { ...p, relevanceScore: score }
+  })
+
+  // Ambil hanya yang punya skor > 0, urutkan dari paling relevan
+  return scored
+    .filter(p => p.relevanceScore > 0)
+    .sort((a, b) => b.relevanceScore - a.relevanceScore)
+}
+
+// ── HELPER: Format produk menjadi konteks teks untuk AI ──
+function formatProductContext(products, maxItems = 10) {
+  if (!products || products.length === 0) return ''
+
+  // Deduplikasi: Kelompokkan produk yang judulnya mirip >80%
+  const seen = new Set()
+  const unique = []
+  for (const p of products) {
+    const normalizedTitle = p.judul.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 40)
+    if (!seen.has(normalizedTitle)) {
+      seen.add(normalizedTitle)
+      unique.push(p)
+    }
+    if (unique.length >= maxItems) break
+  }
+
+  let ctx = `\n[SUMBER DATA 1: KATALOG PRODUK RESMI PERUSAHAAN]\n`
+  ctx += `Berikut ${unique.length} produk yang paling relevan dengan pertanyaan pelanggan:\n\n`
+  unique.forEach((p, i) => {
+    ctx += `PRODUK ${i + 1}:\n`
+    ctx += `  Nama: ${p.judul}\n`
+    ctx += `  Harga: Rp ${Number(p.harga).toLocaleString('id-ID')}\n`
+    // Kirim deskripsi LENGKAP (maks 600 karakter) agar spesifikasi tidak terpotong
+    const deskripsi = (p.deskripsi || '').replace(/\\n/g, ' ').substring(0, 600)
+    ctx += `  Spesifikasi: ${deskripsi}\n\n`
+  })
+  return ctx
+}
+
+export async function analyzeChatScreenshot(base64Image, mimeType = 'image/jpeg') {
+  // ── LANGKAH 1: Baca gambar dulu untuk mendeteksi produk apa yang dibahas ──
+  // Kita akan mengirim gambar DAN data katalog ke AI sekaligus
+  // Agar AI bisa langsung menjawab dengan harga & spek yang akurat
+  
+  // Siapkan ringkasan seluruh katalog produk (judul + harga saja, hemat token)
+  let catalogSummary = ''
+  try {
+    const allProducts = shopeeProducts.map(p => 
+      `- ${p.judul} | Harga: Rp ${Number(p.harga).toLocaleString('id-ID')}`
+    ).join('\n')
+    catalogSummary = `\n\n[DATABASE KATALOG PRODUK PERUSAHAAN]\nAnda WAJIB menggunakan data harga dan spesifikasi dari katalog ini untuk membuat balasan. DILARANG MENGARANG HARGA.\n${allProducts}\n`
+  } catch (err) {
+    console.warn('Gagal memuat katalog untuk analisis chat:', err)
+  }
+
+  // Tambahkan konteks dari database WA
+  let waContext = ''
+  try {
+    const allReplies = await findRelevantReplies('', '')
+    if (allReplies.length > 0) {
+      waContext = `\n[DATABASE PENGETAHUAN INTERNAL]\n`
+      allReplies.slice(0, 15).forEach(r => {
+        waContext += `- ${r.machines?.name}: ${r.question} → ${r.answer}\n`
+      })
+    }
+  } catch (err) {
+    console.warn('Gagal memuat konteks WA:', err)
+  }
+
+  const prompt = `Kamu adalah AI Sales Intelligence Analyst untuk perusahaan mesin CV Asianindo.
+
+ANALISIS screenshot chat ini dan berikan respons dalam format JSON yang VALID (tanpa markdown code block, langsung JSON saja).
+
+ATURAN KRITIS:
+1. BACA DATABASE KATALOG PRODUK di bawah ini SEBELUM membuat balasan.
+2. Jika pelanggan menanyakan harga/spek mesin, GUNAKAN DATA DARI KATALOG. DILARANG KERAS mengarang harga atau spesifikasi.
+3. Jika produk yang ditanyakan pelanggan ada di katalog, sebutkan harga, kapasitas, dan spek yang relevan.
+4. Semua balasan HARUS dalam Bahasa Indonesia.
+${catalogSummary}
+${waContext}
 
 Format JSON yang diharapkan:
 {
@@ -53,7 +156,7 @@ Format JSON yang diharapkan:
   "product": "produk yang dibahas",
   "intent": "deskripsi niat pembelian",
   "isCustomerLastMessage": boolean (true jika pesan terakhir dikirim oleh pelanggan, false jika oleh kita/toko),
-  "bestReply": "rekomendasi balasan terbaik dan paling efektif untuk saat ini (BAHASA INDONESIA)",
+  "bestReply": "rekomendasi balasan terbaik berdasarkan DATA KATALOG (sertakan harga & spek asli jika relevan)",
   "replies": {
     "hard": ["balasan gaya penjualan agresif opsi 1", "balasan gaya agresif opsi 2"],
     "soft": ["balasan gaya penjualan halus opsi 1", "balasan gaya halus opsi 2"],
@@ -63,8 +166,6 @@ Format JSON yang diharapkan:
 }
 
 PENTING:
-- Semua balasan HARUS dalam Bahasa Indonesia
-- Balasan harus relevan dengan konteks percakapan
 - Skor tinggi (80-100) = pelanggan sangat tertarik/mau beli
 - Skor sedang (40-79) = pelanggan masih mempertimbangkan
 - Skor rendah (0-39) = pelanggan hanya browsing/tidak tertarik
@@ -86,12 +187,11 @@ PENTING:
     ],
     generationConfig: {
       temperature: 0.4,
-      maxOutputTokens: 4096,
+      maxOutputTokens: 8192,
       responseMimeType: 'application/json',
     },
   }
 
-  // Coba setiap model, dengan fallback langsung jika kena rate limit
   let lastError = null
 
   for (const model of MODELS) {
@@ -105,7 +205,6 @@ PENTING:
         body: JSON.stringify(requestBody),
       })
 
-      // Rate limit — langsung fallback ke model berikutnya
       if (response.status === 429) {
         console.warn(`[Gemini] Rate limited pada ${model}. Pindah ke model berikutnya...`)
         lastError = new Error(`Rate limit pada ${model}.`)
@@ -121,7 +220,12 @@ PENTING:
       }
 
       const data = await response.json()
-      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+      let rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+
+      rawText = rawText.trim()
+      if (rawText.startsWith('```')) {
+        rawText = rawText.replace(/^```(json)?\n?/i, '').replace(/\n?```$/i, '')
+      }
 
       try {
         const result = JSON.parse(rawText)
@@ -129,6 +233,13 @@ PENTING:
         return result
       } catch (parseError) {
         console.error('[Gemini] Gagal parse JSON:', rawText)
+        // Auto-heal
+        const lastBrace = rawText.lastIndexOf('}')
+        if (lastBrace !== -1) {
+          try {
+            return JSON.parse(rawText.substring(0, lastBrace + 1))
+          } catch (e) { /* fallthrough */ }
+        }
         lastError = new Error('Gagal memproses respons AI. Coba upload ulang gambar.')
         continue
       }
@@ -139,7 +250,6 @@ PENTING:
     }
   }
 
-  // Semua model gagal
   throw new Error(
     lastError?.message || 'Semua model Gemini gagal. Coba lagi nanti.'
   )
@@ -260,26 +370,142 @@ export function fileToBase64(file) {
 }
 
 /**
+ * Ekstrak informasi/pengetahuan dari gambar (screenshot chat, brosur, catatan tangan, dll)
+ * Hasil langsung siap disimpan ke database knowledge base
+ * @param {string} base64Image - Base64 encoded image
+ * @param {string} mimeType - MIME type gambar
+ * @returns {Promise<Array>} Array of {question, answer}
+ */
+export async function extractKnowledgeFromImage(base64Image, mimeType = 'image/jpeg') {
+  const prompt = `Kamu adalah AI Data Engineer yang SANGAT TELITI. Tugasmu adalah membaca gambar ini dan mengekstrak SEMUA informasi penting yang terkandung di dalamnya.
+
+Gambar ini bisa berupa:
+- Screenshot obrolan chat (WhatsApp, Shopee, dll)
+- Foto brosur/katalog produk
+- Foto catatan tangan
+- Screenshot tabel harga
+- Foto spesifikasi mesin
+- Atau dokumen apapun
+
+ATURAN EKSTRAKSI:
+1. BACA GAMBAR DENGAN SANGAT TELITI, jangan lewatkan satu informasi pun.
+2. Ekstrak SETIAP informasi menjadi format {"question": "...", "answer": "..."}.
+3. "question" = Judul ringkas dari informasi tersebut. Contoh: "Mesin Vacuum Frying - Kapasitas 5kg", "Kebijakan Garansi", "Alamat Pabrik".
+4. "answer" = Detail lengkap informasi tersebut termasuk angka, harga, spesifikasi, ukuran, dll.
+5. Jika ada HARGA, pastikan ditulis lengkap dengan nominal Rupiah.
+6. Jika ada SPESIFIKASI TEKNIS (kapasitas, dimensi, daya, material), tulis SELENGKAP mungkin.
+7. Jika ada beberapa produk/mesin berbeda, buatkan entry terpisah untuk masing-masing.
+8. Jika gambar TIDAK BISA DIBACA atau buram, kembalikan array kosong: []
+
+Balas HANYA dengan JSON Array murni tanpa format markdown:
+[
+  {"question": "Judul Informasi 1", "answer": "Detail lengkap informasi 1"},
+  {"question": "Judul Informasi 2", "answer": "Detail lengkap informasi 2"}
+]`
+
+  const requestBody = {
+    contents: [
+      {
+        parts: [
+          { text: prompt },
+          {
+            inline_data: {
+              mime_type: mimeType,
+              data: base64Image,
+            },
+          },
+        ],
+      },
+    ],
+    generationConfig: {
+      temperature: 0.1,
+      maxOutputTokens: 8192,
+      responseMimeType: 'application/json',
+    },
+  }
+
+  let lastError = null
+
+  for (const model of MODELS) {
+    try {
+      const url = getApiUrl(model)
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      })
+
+      if (response.status === 429) continue
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+
+      const data = await response.json()
+      let rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '[]'
+
+      rawText = rawText.trim()
+      if (rawText.startsWith('```')) {
+        rawText = rawText.replace(/^```(json)?\n?/i, '').replace(/\n?```$/i, '')
+      }
+
+      try {
+        const parsed = JSON.parse(rawText)
+        return Array.isArray(parsed) ? parsed : []
+      } catch (parseErr) {
+        // Auto-heal jika terpotong
+        const lastBrace = rawText.lastIndexOf('}')
+        if (lastBrace !== -1) {
+          const fixed = rawText.substring(0, lastBrace + 1) + '\n]'
+          const arr = JSON.parse(fixed)
+          return Array.isArray(arr) ? arr : []
+        }
+        throw parseErr
+      }
+    } catch (err) {
+      lastError = err
+    }
+  }
+
+  throw new Error('Gagal menganalisis gambar: ' + (lastError?.message || 'Semua model gagal'))
+}
+
+/**
  * Generate balasan berdasarkan konteks (dari Generator Balasan page)
  * Memanfaatkan database mesin untuk memperkaya rekomendasi
  */
 export async function generateReplyFromContext(customerMessage, toneValue, leadContext = null, chatContext = '') {
-  // Ambil keywords dari pesan (sangat sederhana, bisa diperbaiki dengan NLP/Regex)
-  const keywords = customerMessage.split(' ').filter(w => w.length > 3).join(' ')
-  
-  // Coba cari di database mesin (cari tanpa nama spesifik dulu)
+  // ── 1. PENCARIAN CERDAS: Cari produk yang relevan menggunakan skor ──
   let dbContext = ''
+
   try {
-    const relevantReplies = await findRelevantReplies('', keywords)
+    const relevantProducts = searchShopeeProducts(customerMessage)
+    const formattedCtx = formatProductContext(relevantProducts, 10)
+    if (formattedCtx) {
+      dbContext += formattedCtx
+    }
+    console.log(`[RAG] Ditemukan ${relevantProducts.length} produk relevan, mengirim ${Math.min(relevantProducts.length, 10)} ke AI`)
+  } catch (err) {
+    console.warn('Gagal memuat konteks shopee:', err)
+  }
+
+  // ── 2. Cari di Database Pengetahuan Internal (Hasil Import WA) ──
+  try {
+    // Buat keyword pencarian yang bersih
+    const stopWords = ['berapa', 'harga', 'yang', 'ada', 'bisa', 'untuk', 'ini', 'itu', 'apa',
+      'mau', 'minta', 'dong', 'min', 'kak', 'bang', 'mas', 'pak', 'halo', 'hai', 'saya',
+      'apakah', 'bagaimana', 'gimana', 'tolong', 'kasih', 'tau', 'tahu', 'dengan',
+      'dan', 'atau', 'dari', 'tidak', 'juga', 'sudah', 'belum', 'lagi', 'per', 'nya']
+    const cleanKeywords = customerMessage.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/)
+      .filter(w => w.length > 1 && !stopWords.includes(w)).join(' ')
+
+    const relevantReplies = await findRelevantReplies('', cleanKeywords)
     if (relevantReplies.length > 0) {
-      dbContext = `\nBERIKUT ADALAH DATABASE PENGETAHUAN (MESIN & INFO PERUSAHAAN) YANG RELEVAN UNTUK REFERENSIMU:\n`
+      dbContext += `\n[SUMBER DATA 2: DATABASE PENGETAHUAN INTERNAL (FAQ & HISTORI)]\nBerikut adalah catatan historis, keunggulan teknis, atau kebijakan perusahaan terkait mesin tersebut:\n`
       relevantReplies.forEach((r, i) => {
-        dbContext += `- ${i+1}. Topik/Kategori: ${r.machines?.name}. Judul/Kata Kunci: "${r.question}". Detail Informasi: "${r.answer}"\n`
+        dbContext += `- Topik: ${r.machines?.name} | Tanya/Judul: "${r.question}" | Jawab/Fakta: "${r.answer}"\n`
       })
-      dbContext += `Gunakan informasi di atas (jika relevan dengan konteks pelanggan) untuk membuat balasan yang akurat.\n`
+      dbContext += `\n`
     }
   } catch (err) {
-    console.warn('Gagal memuat konteks mesin:', err)
+    console.warn('Gagal memuat konteks mesin database:', err)
   }
 
   let toneDescription = 'seimbang'
@@ -288,22 +514,36 @@ export async function generateReplyFromContext(customerMessage, toneValue, leadC
   else if (toneValue > 70) toneDescription = 'sangat santai, ramah, layaknya teman'
   else if (toneValue > 55) toneDescription = 'sedikit santai dan akrab'
 
-  const prompt = `Kamu adalah AI Sales Assistant ahli. Buatlah opsi balasan untuk pesan pelanggan berikut.
+  const prompt = `Kamu adalah AI Sales Assistant ahli untuk perusahaan CV Asianindo (produsen mesin industri makanan/pertanian).
 
-Pesan Pelanggan: "${customerMessage}"
-${chatContext ? `\nPenjelasan Konteks Percakapan: "${chatContext}"\n` : ''}
-${leadContext ? `\nKonteks Lead:\nNama/Perusahaan: ${leadContext.company}\nStatus: ${leadContext.category}\n` : ''}
+ATURAN PALING PENTING (CRITICAL):
+1. DILARANG KERAS berhalusinasi (mengarang) HARGA, KAPASITAS, ATAU SPESIFIKASI.
+2. BACA SELURUH [SUMBER DATA] di bawah dengan TELITI sebelum menjawab.
+3. Jika pelanggan bertanya tentang produk/mesin, cari data yang cocok di SUMBER DATA lalu gunakan harga, kapasitas, dan spesifikasi PERSIS seperti yang tertulis.
+4. Jika ada BEBERAPA varian kapasitas, SEBUTKAN SEMUA varian beserta harganya masing-masing.
+5. Jika produk yang ditanyakan TIDAK ADA di sumber data, jawab dengan ramah bahwa Anda perlu mengecek dulu ke gudang dan akan segera memberikan info.
+6. PENTING: DILARANG menggunakan kata sapaan "Anda", "Bapak", atau "Ibu". SELALU gunakan sapaan "Kak" atau "Kakak" di semua varian balasan.
+
+---
+PESAN PELANGGAN: "${customerMessage}"
+${chatContext ? `KONTEKS OBROLAN SEBELUMNYA: "${chatContext}"\n` : ''}
+${leadContext ? `INFO PELANGGAN: ${leadContext.company} (${leadContext.category})\n` : ''}
 ${dbContext}
-Tone Penulisan yang Diinginkan: ${toneDescription} (Nilai: ${toneValue}/100, di mana 1=Sangat Formal, 100=Sangat Santai).
-Gunakan bahasa Indonesia yang natural, jangan kaku.
+---
 
-Balas dengan format JSON murni:
+Instruksi Penulisan:
+- Tone Bahasa: ${toneDescription} (Tingkat Santai: ${toneValue}/100, di mana 1=Kaku Formal, 100=Teman Akrab).
+- Pastikan angka Rupiah dan satuan (kg, liter, watt) ditulis AKURAT PERSIS seperti data referensi.
+- Jika ada beberapa varian kapasitas mesin yang dimaksud, WAJIB sebutkan semuanya.
+
+Berikan 3 opsi balasan (yang berbeda gaya penyampaiannya namun ISI INFORMASINYA TETAP SAMA sesuai referensi data).
+Balas dengan format JSON murni tanpa format markdown/kode backtick:
 {
   "replies": {
-    "hard": ["balasan penjualan agresif/mendesak 1", "balasan penjualan agresif/mendesak 2", "balasan penjualan agresif/mendesak 3"],
-    "soft": ["balasan ramah/konsultatif 1", "balasan ramah/konsultatif 2", "balasan ramah/konsultatif 3"],
-    "authority": ["balasan menonjolkan keahlian/kualitas/garansi 1", "balasan menonjolkan otoritas 2", "balasan menonjolkan keahlian 3"],
-    "scarcity": ["balasan menonjolkan kelangkaan/urgensi 1", "balasan kelangkaan stok 2", "balasan promo terbatas 3"]
+    "hard": ["balasan penjualan agresif/mendesak 1", "balasan mendesak 2", "balasan mendesak 3"],
+    "soft": ["balasan ramah/konsultatif 1", "balasan ramah 2", "balasan ramah 3"],
+    "authority": ["balasan menonjolkan kualitas/jaminan garansi pabrik 1", "balasan otoritas/ahli 2", "balasan otoritas 3"],
+    "scarcity": ["balasan menonjolkan promo/kelangkaan stok 1", "balasan kelangkaan 2", "balasan kelangkaan 3"]
   }
 }`
 
@@ -335,10 +575,35 @@ Balas dengan format JSON murni:
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
 
       const data = await response.json()
-      const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+      let rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || ''
       
-      const result = JSON.parse(rawText)
-      return result.replies
+      // Bersihkan jika AI mengembalikan format markdown
+      rawText = rawText.trim()
+      if (rawText.startsWith('```')) {
+        rawText = rawText.replace(/^```(json)?\n?/i, '').replace(/\n?```$/i, '')
+      }
+
+      // Hapus karakter kontrol seperti literal newline/tab yang sering merusak JSON string
+      rawText = rawText.replace(/[\n\r\t]+/g, ' ')
+
+      if (!rawText) {
+        throw new Error("AI mengembalikan respons kosong (Mungkin karena diblokir filter keamanan).")
+      }
+
+      try {
+        const result = JSON.parse(rawText)
+        return result.replies
+      } catch (parseErr) {
+        console.warn('JSON Parse Error di Generator Balasan, mencoba memperbaiki...', parseErr)
+        // Auto-heal jika terpotong
+        const lastBraceIndex = rawText.lastIndexOf('}')
+        if (lastBraceIndex !== -1) {
+          const fixedText = rawText.substring(0, lastBraceIndex + 1)
+          const result = JSON.parse(fixedText)
+          if (result.replies) return result.replies
+        }
+        throw parseErr
+      }
     } catch (err) {
       lastError = err
     }
@@ -367,23 +632,28 @@ export async function extractFAQFromChat(chatHistory) {
   // 2. Proses secara berurutan agar tidak terkena Rate Limit (Terlalu Banyak Request)
   for (let index = 0; index < chunks.length; index++) {
     const chunkText = chunks[index];
-    const prompt = `Kamu adalah AI Data Engineer yang bertugas mengekstrak informasi spesifik dari histori obrolan mentah WhatsApp.
-Fokus utamamu adalah MENCATAT SETIAP DATA MESIN yang pernah dibahas.
+    const prompt = `Kamu adalah Ahli Data Mining dan Customer Service Engineer.
+Tugasmu adalah menganalisis histori obrolan mentah dari e-commerce (Shopee/WA) dan mengekstrak SEMUA INFORMASI PENTING menjadi basis data Pengetahuan (Knowledge Base).
 
-Tugas:
-Membaca bagian obrolan ini dan mengekstrak SETIAP informasi terkait:
-1. Nama/Tipe Mesin
-2. Kapasitas Mesin
-3. Spesifikasi Teknis (Material, Dimensi, Daya/Penggerak, dll)
-4. Harga Mesin
-5. Aturan Bisnis (Garansi, Pembayaran, Alamat Pabrik)
+Fokus pada 3 kategori informasi:
+1. SPESIFIKASI PRODUK/MESIN: Segala detail tentang nama mesin, tipe, kapasitas, dimensi, daya listrik, bahan, harga, varian, dan fungsinya.
+2. KEBIJAKAN & OPERASIONAL TOKO: Aturan garansi, alamat bengkel/pabrik, sistem pembayaran (DP), ongkos kirim, sistem pre-order (PO), dan waktu pengerjaan.
+3. PERTANYAAN UMUM & SOLUSI (FAQ): Pertanyaan spesifik/unik dari pelanggan dan jawaban dari penjual.
 
 Aturan EKSTRAKSI:
-1. JANGAN LEWATKAN SATU MESIN PUN. Jika di obrolan ini membahas mesin, kamu WAJIB mencatatnya.
-2. Format "question" (Judul): Gunakan format "[Nama Mesin] - [Kapasitas]". Contoh: "Mesin Vacuum Frying - Kapasitas 5kg".
-3. Format "answer" (Jawaban): Tuliskan seluruh rincian spesifikasi, harga, dan detail teknis dalam bentuk paragraf yang rapi.
-4. Jawab HANYA dengan format JSON Array tanpa format markdown (\`\`\`).
-5. PENTING: Jika di potongan obrolan ini TIDAK ADA pembahasan tentang data mesin sama sekali, balas saja dengan array kosong: []
+1. JANGAN LEWATKAN DETAIL APAPUN. Sekecil apapun detail ukuran, bahan, custom harga, atau waktu PO wajib dicatat.
+2. Format "question" (Judul): Buat sespesifik mungkin. 
+   - Jika tentang produk: "[Nama Mesin] - [Kapasitas/Varian]"
+   - Jika tentang toko/kebijakan: "Info Toko: [Topik]"
+   - Jika berupa FAQ spesifik: "Pertanyaan: [Topik Pertanyaan Pelanggan]"
+3. Format "answer" (Jawaban): Rangkum dengan SANGAT LENGKAP dan DETAIL. Kamu bebas menggunakan garis datar (-) atau format paragraf agar data terbaca jelas.
+4. Jawab HANYA dengan format JSON Array murni, contoh format:
+   [
+     { "question": "Mesin Spinner Peniris Minyak - Kapasitas 5 Kg", "answer": "- Harga: Rp X\\n- Material: Stainless 304\\n- Daya: X Watt\\n- Bisa custom ukuran tabung" },
+     { "question": "Info Toko: Sistem Pembayaran & DP", "answer": "Pemesanan mesin harus menggunakan DP 50%, pelunasan setelah mesin jadi dan siap kirim." }
+   ]
+5. DILARANG KERAS menggunakan tag markdown (\`\`\`). Output harus langsung dimulai dengan tanda kurung siku buka ([) dan ditutup dengan kurung siku tutup (]).
+6. PENTING: Jika di potongan obrolan ini benar-benar tidak ada data penting, balas dengan array kosong: []
 
 Histori Chat Mentah (Bagian ${index + 1} dari ${chunks.length}):
 """

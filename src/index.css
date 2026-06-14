@@ -129,4 +129,86 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+
+  /* Invoice form input styling */
+  .form-input {
+    @apply w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none transition-all text-sm;
+    background-color: rgba(249, 248, 252, 0.5);
+  }
+
+  .form-input:focus {
+    border-color: #6B52C4;
+    box-shadow: 0 0 0 3px rgba(107, 82, 196, 0.15);
+  }
+
+  /* Toggle switch checked state */
+  .peer:checked ~ div {
+    background-color: #2E2067;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   INVOICE GENERATOR – Screen & Print Styles
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Hide the print-only invoice on screen */
+.invoice-print-area {
+  display: none;
+}
+
+/* Print-specific styles */
+@media print {
+  /* Hide everything except the invoice */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Show only the print area */
+  .invoice-print-area,
+  .invoice-print-area * {
+    visibility: visible !important;
+  }
+
+  .invoice-print-area {
+    display: block !important;
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    z-index: 99999;
+  }
+
+  /* Hide form area, sidebar, header, AI assistant */
+  .invoice-form-area,
+  nav,
+  header,
+  .ai-floating-btn,
+  .ai-assistant-panel {
+    display: none !important;
+  }
+
+  /* Reset page layout */
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  /* Force print colors (for yellow total row) */
+  .invoice-paper-print {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+    color-adjust: exact;
+  }
+
+  .invoice-paper-print * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+    color-adjust: exact;
+  }
 }

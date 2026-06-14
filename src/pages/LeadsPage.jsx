@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import LeadsHeader from '../components/leads/LeadsHeader'
 import LeadsFilterBar from '../components/leads/LeadsFilterBar'
@@ -7,9 +8,10 @@ import LeadDetailPanel from '../components/leads/LeadDetailPanel'
 import { getLeadsByCategory, getLeadDetail, deleteLead } from '../services/leadsService'
 
 export default function LeadsPage() {
+  const location = useLocation()
   const [viewMode, setViewMode] = useState('board')
   const [selectedLead, setSelectedLead] = useState(null)
-  const [filters, setFilters] = useState({ platform: 'all', category: 'all', dateRange: '7d' })
+  const [filters, setFilters] = useState({ platform: 'all', category: 'all', dateRange: '7d', sortBy: 'latest' })
   const [leadsData, setLeadsData] = useState({ hot: [], warm: [], cold: [] })
   const [loading, setLoading] = useState(true)
 
@@ -28,6 +30,15 @@ export default function LeadsPage() {
     }
     fetchLeads()
   }, [])
+
+  // Efek untuk membuka lead secara otomatis jika ada parameter openLeadId dari halaman lain (misalnya Dasbor)
+  useEffect(() => {
+    if (location.state?.openLeadId) {
+      handleLeadClick({ id: location.state.openLeadId })
+      // Hapus state agar tidak terus membuka jika direfresh
+      window.history.replaceState({}, document.title)
+    }
+  }, [location.state])
 
   const handleLeadClick = async (lead) => {
     try {
@@ -77,25 +88,39 @@ export default function LeadsPage() {
     }
   }
 
-  // Fungsi bantu untuk memfilter data
-  const applyFilters = (leadArray) => {
-    return leadArray.filter((lead) => {
+  // Fungsi bantu untuk memfilter dan mengurutkan data
+  const applyFiltersAndSort = (leadArray) => {
+    let result = leadArray.filter((lead) => {
       // 1. Filter Platform
       if (filters.platform !== 'all' && lead.platform !== filters.platform) return false
       
-      // 2. Filter Kategori (hanya berlaku di mode List View atau jika kita mau nge-hide column, 
-      // tapi untuk kanban lebih baik filter data di dalam kolomnya)
+      // 2. Filter Kategori
       if (filters.category !== 'all' && lead.category !== filters.category) return false
 
       return true
     })
+
+    // Sorting
+    const sortBy = filters.sortBy || 'latest'
+    result.sort((a, b) => {
+      if (sortBy === 'latest') {
+        const timeA = new Date(a.last_message_time || a.created_at).getTime()
+        const timeB = new Date(b.last_message_time || b.created_at).getTime()
+        return timeB - timeA
+      } else if (sortBy === 'hottest') {
+        return (b.score || 0) - (a.score || 0)
+      }
+      return 0
+    })
+
+    return result
   }
 
-  // Format dan filter data dari Supabase
+  // Format, filter, dan sort data dari Supabase
   const formattedLeads = {
-    hot: applyFilters(leadsData.hot).map(formatLead),
-    warm: applyFilters(leadsData.warm).map(formatLead),
-    cold: applyFilters(leadsData.cold).map(formatLead),
+    hot: applyFiltersAndSort(leadsData.hot).map(formatLead),
+    warm: applyFiltersAndSort(leadsData.warm).map(formatLead),
+    cold: applyFiltersAndSort(leadsData.cold).map(formatLead),
   }
 
   return (

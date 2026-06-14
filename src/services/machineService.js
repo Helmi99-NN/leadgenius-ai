@@ -192,10 +192,20 @@ export async function findRelevantReplies(machineName, keyword = '') {
   }
 
   if (keyword) {
-    query = query.or(`question.ilike.%${keyword}%,answer.ilike.%${keyword}%`)
+    // Pecah keyword menjadi kata-kata (ambil yang panjangnya > 2 agar lebih akurat)
+    const words = keyword.split(' ').filter(w => w.length > 2)
+    if (words.length > 0) {
+      // Buat query OR untuk setiap kata, baik di question maupun answer
+      const orConditions = words.map(w => `question.ilike.%${w}%,answer.ilike.%${w}%`).join(',')
+      query = query.or(orConditions)
+    } else {
+      // Fallback jika tidak ada kata valid
+      query = query.or(`question.ilike.%${keyword}%,answer.ilike.%${keyword}%`)
+    }
   }
 
-  const { data, error } = await query.order('usage_count', { ascending: false }).limit(10)
+  // Ambil hingga 30 data (Gemini token cukup besar)
+  const { data, error } = await query.order('usage_count', { ascending: false }).limit(30)
 
   if (error) throw error
   return data || []

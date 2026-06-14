@@ -4,7 +4,7 @@ import {
   getMachines, searchMachines, addMachine, deleteMachine,
   getMachineReplies, addMachineReply, updateMachineReply, deleteMachineReply
 } from '../services/machineService'
-import { extractFAQFromChat } from '../services/geminiService'
+import { extractFAQFromChat, extractKnowledgeFromImage, fileToBase64 } from '../services/geminiService'
 
 // ── Machine Selector / Creator Component ──
 function MachineSelector({ machines, selectedMachine, onSelect, onAddNew, loading }) {
@@ -245,6 +245,7 @@ export default function MachineDatabasePage() {
   const [machines, setMachines] = useState([])
   const [selectedMachine, setSelectedMachine] = useState(null)
   const [replies, setReplies] = useState([])
+  const [searchReply, setSearchReply] = useState('')
   const [loading, setLoading] = useState(true)
   const [repliesLoading, setRepliesLoading] = useState(false)
 
@@ -257,6 +258,15 @@ export default function MachineDatabasePage() {
   // WA Import State
   const [importingWA, setImportingWA] = useState(false)
   const fileInputRef = useRef(null)
+
+  // Image Import State
+  const [importingImage, setImportingImage] = useState(false)
+  const imageInputRef = useRef(null)
+
+  // Paste Text State
+  const [showPasteModal, setShowPasteModal] = useState(false)
+  const [pasteText, setPasteText] = useState('')
+  const [importingPaste, setImportingPaste] = useState(false)
 
   // Delete confirmation
   const [deleteConfirm, setDeleteConfirm] = useState(null)
@@ -285,6 +295,7 @@ export default function MachineDatabasePage() {
     try {
       const data = await getMachineReplies(machine.id)
       setReplies(data)
+      setSearchReply('')
     } catch (err) {
       console.error('Gagal memuat jawaban:', err)
     } finally {
@@ -335,10 +346,8 @@ export default function MachineDatabasePage() {
         reader.readAsText(file)
       })
 
-      // Batasi teks maksimal ~30,000 karakter agar tidak melebihi batas token prompt
       const extractedData = await extractFAQFromChat(text)
       
-      // Simpan semua data yang diekstrak ke database
       for (const item of extractedData) {
         if (item.question && item.answer) {
           await addMachineReply(selectedMachine.id, item.question, item.answer)
@@ -354,6 +363,63 @@ export default function MachineDatabasePage() {
     } finally {
       setImportingWA(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  async function handleImageImport(e) {
+    const file = e.target.files?.[0]
+    if (!file || !selectedMachine) return
+
+    setImportingImage(true)
+    try {
+      const { base64, mimeType } = await fileToBase64(file)
+      const extractedData = await extractKnowledgeFromImage(base64, mimeType)
+
+      let savedCount = 0
+      for (const item of extractedData) {
+        if (item.question && item.answer) {
+          await addMachineReply(selectedMachine.id, item.question, item.answer)
+          savedCount++
+        }
+      }
+
+      const updatedData = await getMachineReplies(selectedMachine.id)
+      setReplies(updatedData)
+      alert(`Berhasil mengekstrak ${savedCount} informasi dari gambar!`)
+    } catch (err) {
+      console.error(err)
+      alert("Gagal menganalisis gambar: " + err.message)
+    } finally {
+      setImportingImage(false)
+      if (imageInputRef.current) imageInputRef.current.value = ''
+    }
+  }
+
+  async function handlePasteImport() {
+    if (!pasteText.trim() || !selectedMachine) return
+    
+    setImportingPaste(true)
+    try {
+      const extractedData = await extractFAQFromChat(pasteText)
+      
+      let savedCount = 0
+      for (const item of extractedData) {
+        if (item.question && item.answer) {
+          await addMachineReply(selectedMachine.id, item.question, item.answer)
+          savedCount++
+        }
+      }
+      
+      const updatedData = await getMachineReplies(selectedMachine.id)
+      setReplies(updatedData)
+      setShowPasteModal(false)
+      setPasteText('')
+      alert(`Berhasil mengekstrak ${savedCount} informasi dari teks yang di-paste!`)
+    } catch (err) {
+      console.error(err)
+      alert("Gagal menganalisis teks: " + err.message)
+    } finally {
+      setImportingPaste(false)
     }
   }
 
@@ -458,6 +524,28 @@ export default function MachineDatabasePage() {
                   <span className="material-symbols-outlined text-[18px]">forum</span>
                   {importingWA ? 'Menganalisis Chat WA...' : 'Import dari Histori WhatsApp (.txt)'}
                 </button>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  ref={imageInputRef} 
+                  style={{ display: 'none' }} 
+                  onChange={handleImageImport}
+                />
+                <button
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={importingImage}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-dashed border-[#4285F4] hover:bg-[#4285F4]/5 text-[#4285F4] transition-all text-[13px] font-medium disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                >
+                  <span className="material-symbols-outlined text-[18px]">image_search</span>
+                  {importingImage ? 'Menganalisis Gambar...' : 'Import dari Gambar / Screenshot'}
+                </button>
+                <button
+                  onClick={() => setShowPasteModal(true)}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 border-dashed border-[#EE4D2D] hover:bg-[#EE4D2D]/5 text-[#EE4D2D] transition-all text-[13px] font-medium shadow-sm"
+                >
+                  <span className="material-symbols-outlined text-[18px]">content_paste</span>
+                  Paste Teks (Shopee/Lainnya)
+                </button>
               </div>
             ) : (
               <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
@@ -494,8 +582,24 @@ export default function MachineDatabasePage() {
             )}
           </div>
 
+          {/* Search Replies Bar */}
+          {replies.length > 0 && (
+            <div className="px-5 pb-4">
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-on-surface-variant">search</span>
+                <input
+                  type="text"
+                  value={searchReply}
+                  onChange={e => setSearchReply(e.target.value)}
+                  placeholder="Cari informasi dalam topik ini..."
+                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-low text-[13px] text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 focus:bg-white transition-all shadow-sm"
+                />
+              </div>
+            </div>
+          )}
+
           {/* Replies List */}
-          <div className="p-5">
+          <div className="px-5 pb-5">
             {repliesLoading ? (
               <div className="space-y-3 animate-pulse">
                 {[1, 2].map(i => (
@@ -508,9 +612,16 @@ export default function MachineDatabasePage() {
             ) : replies.length > 0 ? (
               <div className="space-y-3">
                 <AnimatePresence>
-                  {replies.map(reply => (
+                  {replies
+                    .filter(r => r.question.toLowerCase().includes(searchReply.toLowerCase()) || r.answer.toLowerCase().includes(searchReply.toLowerCase()))
+                    .map(reply => (
                     <ReplyCard key={reply.id} reply={reply} onEdit={handleEditReply} onDelete={handleDeleteReply} />
                   ))}
+                  {searchReply && replies.filter(r => r.question.toLowerCase().includes(searchReply.toLowerCase()) || r.answer.toLowerCase().includes(searchReply.toLowerCase())).length === 0 && (
+                    <div className="text-center py-6 text-[13px] text-on-surface-variant bg-surface-container-low rounded-xl border border-dashed border-outline-variant">
+                      Tidak ada informasi yang cocok dengan pencarian "{searchReply}".
+                    </div>
+                  )}
                 </AnimatePresence>
               </div>
             ) : (
@@ -556,6 +667,43 @@ export default function MachineDatabasePage() {
               <div className="flex gap-2 justify-end">
                 <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 text-[13px] font-medium text-on-surface-variant rounded-lg hover:bg-surface-container transition-colors">Batal</button>
                 <button onClick={() => handleDeleteMachine(deleteConfirm)} className="px-4 py-2 text-[13px] font-semibold bg-error text-on-error rounded-lg hover:bg-error/90 transition-all">Hapus Topik</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Paste Text Modal */}
+      <AnimatePresence>
+        {showPasteModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => !importingPaste && setShowPasteModal(false)}>
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={e => e.stopPropagation()} className="bg-white rounded-xl p-6 max-w-2xl w-full shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-[#EE4D2D]/10 flex items-center justify-center"><span className="material-symbols-outlined text-[#EE4D2D]">content_paste</span></div>
+                  <h3 className="text-[16px] font-bold text-on-surface">Paste Teks Chat (Shopee / WA)</h3>
+                </div>
+                <button onClick={() => !importingPaste && setShowPasteModal(false)} className="text-on-surface-variant hover:text-on-surface"><span className="material-symbols-outlined">close</span></button>
+              </div>
+              <p className="text-[13px] text-on-surface-variant mb-4">
+                Blok (Select All) dan Salin (Copy) histori chat Anda dari Shopee Web, lalu Paste (Tempel) di kotak bawah ini. AI akan otomatis mengekstrak harga, spesifikasi, dan pertanyaan pelanggan.
+              </p>
+              <textarea
+                value={pasteText}
+                onChange={e => setPasteText(e.target.value)}
+                placeholder="Paste (Ctrl+V) teks chat Shopee atau WhatsApp Anda di sini..."
+                className="w-full h-64 p-4 rounded-xl border border-outline-variant bg-surface-container-lowest text-[13px] focus:outline-none focus:border-[#EE4D2D] focus:ring-1 focus:ring-[#EE4D2D]/30 resize-none font-mono"
+                disabled={importingPaste}
+              />
+              <div className="flex gap-3 justify-end mt-4">
+                <button onClick={() => setShowPasteModal(false)} disabled={importingPaste} className="px-4 py-2.5 text-[13px] font-medium text-on-surface-variant rounded-lg hover:bg-surface-container transition-colors disabled:opacity-50">Batal</button>
+                <button onClick={handlePasteImport} disabled={!pasteText.trim() || importingPaste} className="flex items-center gap-2 px-6 py-2.5 text-[13px] font-semibold bg-[#EE4D2D] text-white rounded-lg hover:bg-[#EE4D2D]/90 transition-all disabled:opacity-50 shadow-sm">
+                  {importingPaste ? (
+                    <><span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> Menganalisis...</>
+                  ) : (
+                    <><span className="material-symbols-outlined text-[18px]">auto_awesome</span> Ekstrak AI</>
+                  )}
+                </button>
               </div>
             </motion.div>
           </motion.div>

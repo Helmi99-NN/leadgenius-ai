@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "LeadGenius AI Shopee Bridge",
+  "version": "1.6",
+  "description": "Jembatan penghubung otomatisasi antara Shopee Seller Center dan LeadGenius AI.",
+  "permissions": [
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://seller.shopee.co.id/*",
+    "http://localhost:5173/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://seller.shopee.co.id/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

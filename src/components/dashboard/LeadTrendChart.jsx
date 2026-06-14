@@ -84,20 +84,15 @@ export default function LeadTrendChart() {
       // Grup data per hari/periode
       const dateRange = generateDateRange(days)
 
-      // Untuk 90H, grup per minggu; untuk 30H, grup per 5 hari; untuk 7H, per hari
+      // Untuk 90H, grup per minggu; untuk 30H dan 7H, per hari agar akurat
       let groupedDates = []
       if (activePeriod === '90H') {
         // Grup per minggu (~13 titik)
         for (let i = 0; i < dateRange.length; i += 7) {
           groupedDates.push(dateRange.slice(i, i + 7))
         }
-      } else if (activePeriod === '30H') {
-        // Grup per 5 hari (6 titik)
-        for (let i = 0; i < dateRange.length; i += 5) {
-          groupedDates.push(dateRange.slice(i, i + 5))
-        }
       } else {
-        // Per hari (7 titik)
+        // 30H dan 7H tampilkan per hari
         groupedDates = dateRange.map((d) => [d])
       }
 

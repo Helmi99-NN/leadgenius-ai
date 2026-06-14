@@ -10,9 +10,11 @@ const navItems = [
   { path: '/leads', label: 'Prospek', icon: 'group' },
   { path: '/follow-up', label: 'Tindak Lanjut', icon: 'history_toggle_off' },
   { path: '/reply-generator', label: 'Generator Balasan', icon: 'auto_awesome' },
-  { path: '/competitors', label: 'Kompetitor', icon: 'monitoring' },
+
   { path: '/machine-database', label: 'Database Pengetahuan', icon: 'menu_book' },
   { path: '/products', label: 'Produk Shopee', icon: 'shopping_bag' },
+  { path: '/invoice', label: 'Buat Invoice', icon: 'receipt_long' },
+  { path: '/social-audit', label: 'Audit Sosmed', icon: 'fact_check' },
   { path: '/notifications', label: 'Notifikasi', icon: 'notifications', isNotification: true },
 ]
 

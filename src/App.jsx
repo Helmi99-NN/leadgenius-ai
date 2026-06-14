@@ -5,13 +5,14 @@ import AnalyzerPage from './pages/AnalyzerPage'
 import LeadsPage from './pages/LeadsPage'
 import FollowUpPage from './pages/FollowUpPage'
 import ReplyGeneratorPage from './pages/ReplyGeneratorPage'
-import CompetitorPage from './pages/CompetitorPage'
+
 import MachineDatabasePage from './pages/MachineDatabasePage'
 import NotificationsPage from './pages/NotificationsPage'
 import SettingsPage from './pages/SettingsPage'
 import ShopeeProductsPage from './pages/ShopeeProductsPage'
+import InvoiceGeneratorPage from './pages/InvoiceGeneratorPage'
+import SocialMediaAuditPage from './pages/SocialMediaAuditPage'
 import AIAssistant from './components/ai/AIAssistant'
-
 function App() {
   return (
     <>
@@ -24,9 +25,11 @@ function App() {
           <Route path="leads" element={<LeadsPage />} />
           <Route path="follow-up" element={<FollowUpPage />} />
           <Route path="reply-generator" element={<ReplyGeneratorPage />} />
-          <Route path="competitors" element={<CompetitorPage />} />
+
           <Route path="machine-database" element={<MachineDatabasePage />} />
           <Route path="products" element={<ShopeeProductsPage />} />
+          <Route path="invoice" element={<InvoiceGeneratorPage />} />
+          <Route path="social-audit" element={<SocialMediaAuditPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>

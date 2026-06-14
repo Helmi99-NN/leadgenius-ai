@@ -36,21 +36,34 @@ export default function LeadsFilterBar({ filters, onFilterChange }) {
       </select>
 
       {/* Filter Tanggal */}
-      <div className="flex items-center bg-white border border-outline-variant rounded-lg px-3 py-1.5 gap-2">
+      <div className="flex items-center bg-white border border-outline-variant rounded-lg px-3 py-1.5 gap-2 hidden md:flex">
         <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
           calendar_today
         </span>
         <input
-          className="bg-transparent border-none p-0 font-label-md text-label-md text-on-surface w-32 focus:ring-0 focus:outline-none"
+          className="bg-transparent border-none p-0 font-label-md text-label-md text-on-surface w-28 focus:ring-0 focus:outline-none"
           type="text"
           readOnly
           value="7 Hari Terakhir"
         />
       </div>
 
+      {/* Filter Urutan (Sorting) */}
+      <div className="flex items-center bg-white border border-outline-variant rounded-lg px-3 gap-2">
+        <span className="material-symbols-outlined text-[16px] text-on-surface-variant">sort</span>
+        <select
+          value={filters.sortBy || 'latest'}
+          onChange={(e) => onFilterChange({ ...filters, sortBy: e.target.value })}
+          className="bg-transparent border-none font-label-md text-label-md p-1.5 text-on-surface min-w-[140px] focus:ring-0 focus:outline-none transition-all"
+        >
+          <option value="latest">Terbaru (Chat)</option>
+          <option value="hottest">Terhangat (Skor)</option>
+        </select>
+      </div>
+
       {/* Hapus Filter */}
       <button 
-        onClick={() => onFilterChange({ platform: 'all', category: 'all', dateRange: '7d' })}
+        onClick={() => onFilterChange({ platform: 'all', category: 'all', dateRange: '7d', sortBy: 'latest' })}
         className="ml-auto text-primary font-label-sm text-label-sm hover:underline transition-all"
       >
         Hapus Filter
