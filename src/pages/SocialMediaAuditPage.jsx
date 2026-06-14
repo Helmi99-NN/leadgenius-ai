@@ -1,11 +1,22 @@
-import { useState } from 'react'
-import { analyzeSocialMedia } from '../services/socialAuditService'
+import { useState, useEffect } from 'react'
+import { analyzeSocialMedia, saveAuditToSupabase, getAuditHistoryFromSupabase } from '../services/socialAuditService'
 
 export default function SocialMediaAuditPage() {
   const [url, setUrl] = useState('')
   const [files, setFiles] = useState([])
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [auditResult, setAuditResult] = useState(null)
+  const [history, setHistory] = useState([])
+  const [showHistory, setShowHistory] = useState(false)
+
+  useEffect(() => {
+    loadHistory()
+  }, [])
+
+  const loadHistory = async () => {
+    const res = await getAuditHistoryFromSupabase()
+    if (res.success) setHistory(res.data)
+  }
 
   const handleFileChange = (e) => {
     if (e.target.files) {
@@ -24,6 +35,8 @@ export default function SocialMediaAuditPage() {
     setIsAnalyzing(false)
     if (result.success) {
       setAuditResult(result.data)
+      await saveAuditToSupabase(url || (files[0] ? files[0].name : "File Upload"), result.data)
+      loadHistory()
     } else {
       alert("Gagal menganalisis profil: " + result.error)
     }
@@ -33,11 +46,20 @@ export default function SocialMediaAuditPage() {
     <div className="p-6 max-w-7xl mx-auto space-y-8 animate-fade-in relative z-10 font-sans">
       {/* HEADER */}
       <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center relative overflow-hidden">
+        
+        <button 
+          onClick={() => setShowHistory(true)}
+          className="absolute top-6 right-6 flex items-center gap-2 text-[#1a2b4c] font-bold hover:bg-gray-50 px-4 py-2 rounded-xl transition-all border border-gray-200 z-20 shadow-sm"
+        >
+          <span className="material-symbols-outlined">history</span>
+          Riwayat (Cloud)
+        </button>
+
         {/* Decorative background shapes */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-[#ff6b5b] opacity-5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#1a2b4c] opacity-5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3"></div>
         
-        <div className="w-16 h-16 bg-[#1a2b4c]/10 rounded-2xl flex items-center justify-center mb-6 relative z-10">
+        <div className="w-16 h-16 bg-[#1a2b4c]/10 rounded-2xl flex items-center justify-center mb-6 mt-4 relative z-10">
           <span className="material-symbols-outlined text-4xl text-[#1a2b4c]">fact_check</span>
         </div>
         <h1 className="text-4xl font-black text-[#1a2b4c] mb-4 relative z-10 tracking-tight">360° Facebook Ads Audit</h1>
@@ -285,6 +307,56 @@ export default function SocialMediaAuditPage() {
               </div>
           </div>
 
+        </div>
+      )}
+
+      {/* HISTORY SLIDE-OVER */}
+      {showHistory && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex justify-end">
+          <div className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col animate-fade-in-right">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-[#1a2b4c] text-white">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <span className="material-symbols-outlined">cloud_sync</span>
+                Riwayat Audit
+              </h2>
+              <button onClick={() => setShowHistory(false)} className="hover:bg-white/20 p-2 rounded-full transition-colors">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="p-4 flex-1 overflow-y-auto space-y-3 bg-gray-50">
+              {history.length === 0 ? (
+                <div className="text-center mt-10">
+                  <span className="material-symbols-outlined text-6xl text-gray-300 mb-2">inbox</span>
+                  <p className="text-gray-500 font-medium">Belum ada riwayat audit.</p>
+                </div>
+              ) : (
+                history.map((h) => (
+                  <div 
+                    key={h.id} 
+                    onClick={() => {
+                      setAuditResult(h.result);
+                      setShowHistory(false);
+                      window.scrollTo({ top: 400, behavior: 'smooth' });
+                    }}
+                    className="p-4 bg-white border border-gray-200 rounded-xl hover:border-[#ff6b5b] hover:shadow-md cursor-pointer transition-all flex flex-col gap-3 group"
+                  >
+                    <div className="flex justify-between items-start">
+                      <strong className="text-[#1a2b4c] truncate max-w-[200px] text-sm group-hover:text-[#ff6b5b] transition-colors">{h.url}</strong>
+                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md">
+                        {new Date(h.created_at).toLocaleDateString('id-ID', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'})}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center border-t border-gray-50 pt-2">
+                      <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Status:</span>
+                      <span className={`text-xs font-bold px-2 py-1 rounded-lg ${h.result?.conclusion?.status?.includes('LAYAK') && !h.result?.conclusion?.status?.includes('BELUM') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        {h.result?.conclusion?.status || 'Unknown'}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

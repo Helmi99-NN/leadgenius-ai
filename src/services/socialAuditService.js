@@ -1,3 +1,5 @@
+import { supabase } from '../lib/supabase'
+
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY
 
 // Fungsi Helper untuk mengupload file (Video) ke Gemini File API
@@ -194,6 +196,41 @@ BERIKAN HASIL AUDIT DALAM FORMAT JSON BERIKUT (TIDAK ADA TEKS LAIN SELAIN JSON I
     return { success: true, data: parsedJson };
   } catch (error) {
     console.error('Audit Error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// -----------------------------------------------------------------
+// SUPABASE STORAGE FUNCTIONS
+// -----------------------------------------------------------------
+export async function saveAuditToSupabase(url, result) {
+  try {
+    const { data, error } = await supabase
+      .from('social_audits')
+      .insert([
+        { url: url || "File Upload", result: result }
+      ])
+      .select();
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    console.error("Gagal menyimpan riwayat audit:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getAuditHistoryFromSupabase() {
+  try {
+    const { data, error } = await supabase
+      .from('social_audits')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    console.error("Gagal mengambil riwayat audit:", error);
     return { success: false, error: error.message };
   }
 }
