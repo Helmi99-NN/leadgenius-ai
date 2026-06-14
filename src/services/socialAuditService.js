@@ -145,9 +145,24 @@ BERIKAN HASIL AUDIT DALAM FORMAT JSON BERIKUT (TIDAK ADA TEKS LAIN SELAIN JSON I
     "evaluation": "string (evaluasi berdasarkan pola konten yang terlihat pada rekaman/gambar)"
   },
   "roadmap": {
-    "high": ["string (minimal 3 tindakan perbaikan visual/konten wajib)"],
-    "medium": ["string (minimal 3 tindakan optimasi menengah)"],
-    "low": ["string (minimal 2 tindakan optimasi jangka panjang)"]
+    "high": [
+      {
+        "task": "string (Tindakan perbaikan wajib)",
+        "action": "string (Berikan teks spesifik, copywriting, draft bio, atau ide konten yang siap di-copy-paste/diimplementasikan oleh pengguna)"
+      }
+    ],
+    "medium": [
+      {
+        "task": "string (Tindakan optimasi menengah)",
+        "action": "string (Berikan teks spesifik, copywriting, atau ide praktis)"
+      }
+    ],
+    "low": [
+      {
+        "task": "string (Optimasi jangka panjang)",
+        "action": "string (Panduan atau teks siap pakai)"
+      }
+    ]
   }
 }`;
 
@@ -169,8 +184,8 @@ BERIKAN HASIL AUDIT DALAM FORMAT JSON BERIKUT (TIDAK ADA TEKS LAIN SELAIN JSON I
 
     // Fallback jika 2.5-flash sedang sibuk (high demand 503)
     if (!response.ok && response.status === 503) {
-      console.warn("Gemini 2.5 Flash sibuk, mencoba Gemini 1.5 Flash...");
-      model = 'gemini-1.5-flash';
+      console.warn("Gemini 2.5 Flash sibuk, mencoba Gemini 2.0 Flash...");
+      model = 'gemini-2.0-flash';
       url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
       response = await fetch(url, {
         method: 'POST',

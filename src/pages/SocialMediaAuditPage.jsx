@@ -267,11 +267,24 @@ export default function SocialMediaAuditPage() {
                     Prioritas Tinggi
                   </h4>
                   <ul className="space-y-4">
-                    {auditResult.roadmap.high.map((task, i) => (
-                      <li key={i} className="flex gap-3 text-sm text-red-900 leading-relaxed">
-                        <span className="text-red-500 font-bold mt-0.5">•</span> {task}
+                    {auditResult.roadmap.high.map((item, i) => {
+                      const task = typeof item === 'string' ? item : item.task;
+                      const action = typeof item === 'string' ? null : item.action;
+                      return (
+                      <li key={i} className="flex flex-col gap-2 text-sm text-red-900 leading-relaxed bg-white p-3 rounded-xl border border-red-100/50">
+                        <div className="flex gap-2">
+                          <span className="text-red-500 font-bold mt-0.5">•</span> 
+                          <span className="font-semibold">{task}</span>
+                        </div>
+                        {action && (
+                          <div className="mt-1 ml-4 bg-red-50/50 p-3 rounded-lg border border-red-100">
+                             <strong className="text-[10px] text-red-400 block mb-1 uppercase tracking-wider">Eksekusi Praktis:</strong>
+                             <p className="text-red-800 italic select-all">{action}</p>
+                          </div>
+                        )}
                       </li>
-                    ))}
+                      )
+                    })}
                   </ul>
                 </div>
                 
@@ -282,11 +295,24 @@ export default function SocialMediaAuditPage() {
                     Prioritas Menengah
                   </h4>
                   <ul className="space-y-4">
-                    {auditResult.roadmap.medium.map((task, i) => (
-                      <li key={i} className="flex gap-3 text-sm text-yellow-900 leading-relaxed">
-                        <span className="text-yellow-500 font-bold mt-0.5">•</span> {task}
+                    {auditResult.roadmap.medium.map((item, i) => {
+                      const task = typeof item === 'string' ? item : item.task;
+                      const action = typeof item === 'string' ? null : item.action;
+                      return (
+                      <li key={i} className="flex flex-col gap-2 text-sm text-yellow-900 leading-relaxed bg-white p-3 rounded-xl border border-yellow-100/50">
+                        <div className="flex gap-2">
+                          <span className="text-yellow-500 font-bold mt-0.5">•</span> 
+                          <span className="font-semibold">{task}</span>
+                        </div>
+                        {action && (
+                          <div className="mt-1 ml-4 bg-yellow-50/50 p-3 rounded-lg border border-yellow-100">
+                             <strong className="text-[10px] text-yellow-500 block mb-1 uppercase tracking-wider">Eksekusi Praktis:</strong>
+                             <p className="text-yellow-800 italic select-all">{action}</p>
+                          </div>
+                        )}
                       </li>
-                    ))}
+                      )
+                    })}
                   </ul>
                 </div>
 
@@ -297,11 +323,24 @@ export default function SocialMediaAuditPage() {
                     Prioritas Rendah (Optimasi)
                   </h4>
                   <ul className="space-y-4">
-                    {auditResult.roadmap.low.map((task, i) => (
-                      <li key={i} className="flex gap-3 text-sm text-green-900 leading-relaxed">
-                        <span className="text-green-500 font-bold mt-0.5">•</span> {task}
+                    {auditResult.roadmap.low.map((item, i) => {
+                      const task = typeof item === 'string' ? item : item.task;
+                      const action = typeof item === 'string' ? null : item.action;
+                      return (
+                      <li key={i} className="flex flex-col gap-2 text-sm text-green-900 leading-relaxed bg-white p-3 rounded-xl border border-green-100/50">
+                        <div className="flex gap-2">
+                          <span className="text-green-500 font-bold mt-0.5">•</span> 
+                          <span className="font-semibold">{task}</span>
+                        </div>
+                        {action && (
+                          <div className="mt-1 ml-4 bg-green-50/50 p-3 rounded-lg border border-green-100">
+                             <strong className="text-[10px] text-green-500 block mb-1 uppercase tracking-wider">Panduan Praktis:</strong>
+                             <p className="text-green-800 italic select-all">{action}</p>
+                          </div>
+                        )}
                       </li>
-                    ))}
+                      )
+                    })}
                   </ul>
                 </div>
               </div>
@@ -394,18 +433,18 @@ function getMockData() {
     },
     roadmap: {
       high: [
-        "Lengkapi Nomor WhatsApp dan Link Website resmi di kolom profil Bio",
-        "Buat 3 postingan Testimoni Pelanggan yang di-pin di bagian paling atas profil",
-        "Ubah kategori profil dari 'Digital Creator' menjadi kategori bisnis/perusahaan yang relevan"
+        { task: "Lengkapi Nomor WhatsApp dan Link Website resmi di kolom profil Bio", action: "Bio Baru: 'Spesialis Baju Koko Anak Premium ✨ | Pengiriman Seluruh Indonesia 📦 | Pesan via WhatsApp 👇' \n\nLink: wa.me/628123456789" },
+        { task: "Buat 3 postingan Testimoni Pelanggan yang di-pin di bagian paling atas profil", action: "Post 1: 'Alhamdulillah, pesanan mendarat aman di Surabaya! Terima kasih bunda testimoni jujurnya 🥰' (Sertakan foto screenshot chat)" },
+        { task: "Ubah kategori profil dari 'Digital Creator' menjadi kategori bisnis/perusahaan yang relevan", action: "Masuk ke Edit Profile -> Category -> Ubah menjadi 'Clothing (Brand)'" }
       ],
       medium: [
-        "Perbaiki resolusi Foto Cover agar terlihat profesional di tampilan Desktop maupun Mobile",
-        "Tambahkan setidaknya 5 katalog produk di fitur Shop/Postingan unggulan",
-        "Tingkatkan interaksi organik minimal 50 likes agar tidak terlihat seperti akun palsu"
+        { task: "Perbaiki resolusi Foto Cover agar terlihat profesional di tampilan Desktop maupun Mobile", action: "Gunakan Canva ukuran 1640 x 856 px. Letakkan logo dan pesan utama di tengah agar tidak terpotong di HP." },
+        { task: "Tambahkan setidaknya 5 katalog produk di fitur Shop/Postingan unggulan", action: "Buat album foto 'Katalog 2026' dan unggah 5 produk best-seller dengan deskripsi harga dan bahan yang jelas." },
+        { task: "Tingkatkan interaksi organik minimal 50 likes agar tidak terlihat seperti akun palsu", action: "Minta teman atau kerabat untuk like dan komen di 3 postingan terakhir Anda." }
       ],
       low: [
-        "Buat warna thumbnail video/postingan yang lebih seragam menggunakan template brand",
-        "Balas beberapa komentar lama untuk memancing kembali algoritma engagement rate"
+        { task: "Buat warna thumbnail video/postingan yang lebih seragam menggunakan template brand", action: "Pilih 2 warna utama merek (misalnya Biru Navy dan Emas) dan konsisten gunakan untuk teks judul di setiap foto." },
+        { task: "Balas beberapa komentar lama untuk memancing kembali algoritma engagement rate", action: "Balas: 'Terima kasih banyak kak atas kepercayaannya! Ditunggu orderan selanjutnya ya 🙏'" }
       ]
     }
   }
