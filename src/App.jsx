@@ -12,6 +12,7 @@ import SettingsPage from './pages/SettingsPage'
 import ShopeeProductsPage from './pages/ShopeeProductsPage'
 import InvoiceGeneratorPage from './pages/InvoiceGeneratorPage'
 import SocialMediaAuditPage from './pages/SocialMediaAuditPage'
+import ContentFactoryPage from './pages/ContentFactoryPage'
 import AIAssistant from './components/ai/AIAssistant'
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
           <Route path="products" element={<ShopeeProductsPage />} />
           <Route path="invoice" element={<InvoiceGeneratorPage />} />
           <Route path="social-audit" element={<SocialMediaAuditPage />} />
+          <Route path="content-factory" element={<ContentFactoryPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>

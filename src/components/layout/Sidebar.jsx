@@ -15,6 +15,7 @@ const navItems = [
   { path: '/products', label: 'Produk Shopee', icon: 'shopping_bag' },
   { path: '/invoice', label: 'Buat Invoice', icon: 'receipt_long' },
   { path: '/social-audit', label: 'Audit Sosmed', icon: 'fact_check' },
+  { path: '/content-factory', label: 'Pabrik Konten', icon: 'smart_toy' },
   { path: '/notifications', label: 'Notifikasi', icon: 'notifications', isNotification: true },
 ]
 

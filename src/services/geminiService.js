@@ -728,3 +728,99 @@ ${chunkText}
 
   return allExtracted;
 }
+
+// -----------------------------------------------------------------
+// YOUTUBE CONTENT FACTORY
+// -----------------------------------------------------------------
+
+export async function generateYouTubeContentIdeas(topic, isAutoMode) {
+  const model = 'gemini-2.5-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+
+  const autoPrompt = isAutoMode 
+    ? "Cari dan analisis tren pasar saham Indonesia (IHSG) terbaru, emiten yang sedang viral, atau saham yang undervalued yang sedang ramai dibicarakan saat ini untuk dijadikan topik utama." 
+    : `Fokus secara mendalam pada topik spesifik yang diberikan pengguna berikut ini: "${topic}".`;
+
+  const systemPrompt = `Anda adalah AI Content Production Manager untuk channel YouTube Finance Indonesia yang fokus membahas saham Indonesia, IPO, analisis emiten, ekonomi makro, sektor industri, dan perbandingan perusahaan publik.
+
+${autoPrompt}
+
+Lakukan 4 Tahap berikut dan kembalikan output DALAM FORMAT JSON SAJA (Tanpa teks markdown di luar JSON).
+
+TAHAP 1: GENERATE IDE KONTEN
+Buat 20 ide konten dengan format: Judul Sementara, Alasan Konten Menarik, Potensi CTR (1-10), Potensi Viewer, Target Audiens, Hook Utama.
+Setelah selesai, pilih 1 ide dengan skor tertinggi untuk dilanjutkan ke tahap berikutnya.
+
+TAHAP 2: DEEP RESEARCH
+Lakukan riset mendalam berdasarkan 1 ide terpilih. Buat teks komprehensif berisi: Profil Perusahaan, Kinerja Keuangan, Pertumbuhan Pendapatan, Laba Bersih, Valuasi, Risiko, Peluang Pertumbuhan, dan Kesimpulan Investasi.
+
+TAHAP 3: NOTEBOOKLM & SCRIPT PROMPT
+Buat struktur/naskah video ala Podcast NotebookLM (Video Overview) berdasarkan hasil riset. Format video meliputi: Hook (0-30 detik), Masalah Utama, Analisis Data, Insight Penting, Risiko, Kesimpulan, Call To Action. Durasi target: 8-15 menit.
+
+TAHAP 4: GENERATE THUMBNAIL AI PROMPT
+Buat HOOK thumbnail (Shock Value, Angka Besar, Konflik, dll) dan buat prompt gambar berbahasa Inggris untuk DALL-E 3 / Midjourney yang ultra realistic, cinematic lighting, high CTR, 16:9.
+
+TAHAP 5: METADATA YOUTUBE
+Buat 10 Judul YouTube (CTR tinggi, SEO friendly, Max 60 char), 3 Deskripsi YouTube, Tag SEO, Keyword Utama, Keyword Turunan.
+
+FORMAT JSON YANG WAJIB ANDA KEMBALIKAN:
+{
+  "ideas": [
+    {
+      "title": "Judul",
+      "reason": "Alasan",
+      "ctr": 9,
+      "viewer": "50k-100k",
+      "audience": "Investor Pemula",
+      "hook": "Hook utama..."
+    }
+  ],
+  "selectedIdea": {
+    "title": "Judul Terpilih",
+    "reason": "Alasan terpilih..."
+  },
+  "deepResearch": "Teks panjang riset mendalam... (bisa pakai markdown di dalamnya)",
+  "notebookLmPrompt": "Struktur naskah video/podcast... (bisa pakai markdown)",
+  "thumbnail": {
+    "hook": "Hook Thumbnail...",
+    "prompt": "Prompt bahasa inggris untuk DALL-E/Midjourney..."
+  },
+  "metadata": {
+    "titles": ["Judul 1", "Judul 2", "Judul 3", "Judul 4", "Judul 5", "Judul 6", "Judul 7", "Judul 8", "Judul 9", "Judul 10"],
+    "descriptions": ["Desc 1", "Desc 2", "Desc 3"],
+    "tags": ["tag1", "tag2"],
+    "keywords": {
+      "main": "keyword utama",
+      "LSI": ["keyword turunan 1", "keyword turunan 2"]
+    }
+  }
+}
+`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: systemPrompt }] }],
+        generationConfig: { temperature: 0.7, responseMimeType: 'application/json' }
+      })
+    });
+
+    if (!response.ok) {
+      const errData = await response.json();
+      throw new Error(errData.error?.message || 'Gagal terhubung ke Gemini API');
+    }
+
+    const data = await response.json();
+    const textResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (!textResult) throw new Error('Format balasan AI tidak valid atau kosong.');
+
+    const parsedJson = JSON.parse(textResult);
+    return { success: true, data: parsedJson };
+  } catch (error) {
+    console.error('Content Factory Error:', error);
+    return { success: false, error: error.message };
+  }
+}
